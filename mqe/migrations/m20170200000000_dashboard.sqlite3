@@ -1,0 +1,39 @@
+CREATE TABLE dashboard (
+    owner_id uuid,
+    dashboard_id uuid,
+    dashboard_name text,
+    dashboard_options text,
+    PRIMARY KEY(owner_id, dashboard_id)
+);
+
+CREATE TABLE dashboard_layout (
+    owner_id uuid,
+    dashboard_id uuid,
+    layout_def text,
+    layout_props text,
+    layout_id timeuuid,
+    PRIMARY KEY(owner_id, dashboard_id)
+);
+
+CREATE TABLE all_dashboards_properties (
+    owner_id uuid,
+    dashboard_id_ordering text,
+    PRIMARY KEY(owner_id)
+);
+
+CREATE TABLE layout_by_report (
+    owner_id uuid,
+    report_id timeuuid,
+    label text,
+    tags strset,
+    dashboard_id uuid,
+    layout_id timeuuid,
+    PRIMARY KEY(owner_id, report_id, label, tags, dashboard_id)
+);
+
+CREATE TABLE tile (
+    dashboard_id uuid,
+    tile_id timeuuid,
+    tile_options text,
+    PRIMARY KEY(dashboard_id, tile_id)
+);

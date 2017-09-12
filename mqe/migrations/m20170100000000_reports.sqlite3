@@ -1,0 +1,68 @@
+CREATE TABLE report (
+    report_id timeuuid,
+    report_name text,
+    owner_id uuid,
+    report_instance_count int DEFAULT 0,
+    report_instance_diskspace int DEFAULT 0,
+    PRIMARY KEY(report_id)
+);
+CREATE INDEX report__owner_id_report_name ON report(owner_id, report_name);
+
+CREATE TABLE report_instance (
+    report_id timeuuid,
+    tags strset,
+    report_instance_id timeuuid,
+    ri_data text,
+    input_string text,
+    all_tags strset,
+    extra_ri_data text,
+    PRIMARY KEY(report_id, tags, report_instance_id)
+);
+
+CREATE TABLE report_instance_day (
+    report_id timeuuid,
+    tags strset,
+    day date,
+    PRIMARY KEY(report_id, tags, day)
+);
+
+CREATE TABLE report_tag (
+    report_id timeuuid,
+    tag text,
+    PRIMARY KEY(report_id, tag)
+);
+
+CREATE TABLE report_data_for_owner (
+    owner_id timeuuid,
+    report_instance_count int DEFAULT 0,
+    report_instance_diskspace int DEFAULT 0,
+    PRIMARY KEY(owner_id)
+);
+
+CREATE TABLE series_def (
+    report_id timeuuid,
+    tags strset,
+    series_id timeuuid,
+    series_spec text,
+    from_rid timeuuid,
+    to_rid timeuuid,
+    PRIMARY KEY(report_id, tags, series_id)
+);
+CREATE INDEX series_def__series_spec ON series_def(series_spec);
+
+
+CREATE TABLE series_value (
+    series_id timeuuid,
+    report_instance_id timeuuid,
+    json_value text,
+    header text,
+    PRIMARY KEY(series_id, report_instance_id)
+);
+
+CREATE TABLE options (
+  report_id timeuuid,
+  kind text,
+  options_key text,
+  options_value text,
+  PRIMARY KEY (report_id, kind, options_key)
+);
