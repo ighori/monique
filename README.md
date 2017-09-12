@@ -32,7 +32,7 @@ When data is sent using a programming language, the preferred format is JSON. Th
 
 ### Auto-create new dashboard tiles
 
-The library supports [automatic creation of tiles](http://monique-dashboards.readthedocs.io/en/latest/sscreator.htmlautomatic) by employing the concept of a **master tile** that can be copied. The feature handles cases when multiple instances of the same entity are present: servers, microservice instances, stock prices.
+The library supports [automatic creation of tiles](http://monique-dashboards.readthedocs.io/en/latest/tpcreator.html) by employing the concept of a **master tile** that can be copied. The feature handles cases when multiple instances of the same entity are present: servers, microservice instances, stock prices.
 
 ### Auto-create data series
 
@@ -40,7 +40,7 @@ When SQL results contain new rows, in most cases they should be also included in
 
 ### Manage dashboards' layouts
 
-The library uses a model of [immutable layout and tile definitions](http://monique-dashboards.readthedocs.io/en/latest/layout.html), making handling concurrency and synchronizing state easy. Ready functions for placing and detaching tiles are available.
+The library uses a model of [immutable layout and tile definitions](http://monique-dashboards.readthedocs.io/en/latest/layouts.html), making handling concurrency and synchronizing state easy. Ready functions for placing and detaching tiles are available.
 
 ### Fetch data formatted for rendering a tile
 
