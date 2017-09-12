@@ -29,7 +29,7 @@ Installation using SQLite3
 
     $ touch /var/lib/monique.db
 
-4. Execute migration files with the extension ``.sqlite3``. The files are available in the `repository <https://github.com/monique-dashboards/monique/mqe/migrations>`_ and are also present in the Python package ``mqe.migrations``::
+4. Execute migration files with the extension ``.sqlite3``. The files are available in the `repository <https://github.com/monique-dashboards/monique/tree/master/mqe/migrations>`_ and are also present in the Python package ``mqe.migrations``::
 
     $ migrations_dir=$(python -c 'from os.path import dirname; from mqe import migrations; print(dirname(migrations.__file__))')
     $ cat "$migrations_dir"/*.sqlite3 | sqlite3 /var/lib/monique.db
@@ -65,7 +65,7 @@ The library works with Cassandra 3.x.
 
     $ cqlsh 127.0.0.1 -e "CREATE KEYSPACE mqe WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };"
 
-4. Execute migration files with the extension ``.cql``. The files are available in the `repository <https://github.com/monique-dashboards/monique/mqe/migrations>`_ and are also present in the Python package ``mqe.migrations``::
+4. Execute migration files with the extension ``.cql``. The files are available in the `repository <https://github.com/monique-dashboards/monique/tree/master/mqe/migrations>`_ and are also present in the Python package ``mqe.migrations``::
 
     $ migrations_dir=$(python -c 'from os.path import dirname; from mqe import migrations; print(dirname(migrations.__file__))')
     $ for file in "$migrations_dir"/*.cql; do cqlsh 127.0.0.1 -f "$file"; done
