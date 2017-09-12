@@ -9,10 +9,15 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import os.path
+import os
 import sys
 
 BASE_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__)))
 sys.path.append(os.path.join(BASE_DIR, '..'))
+
+
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+
 
 # -- General configuration ------------------------------------------------
 
@@ -85,8 +90,10 @@ todo_include_todos = False
 #
 #html_theme = 'alabaster'
 
-html_theme_path = ['_themes']
-html_theme = 'sphinx_rtd_theme_modified'
+
+if not on_rtd:
+    html_theme_path = ['_themes']
+    html_theme = 'sphinx_rtd_theme_modified'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
