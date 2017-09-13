@@ -5,10 +5,8 @@ setup(
         version = '1.0',
         packages = find_packages(exclude=['mqe.tests',]),
         install_requires = [
+            'monique-tables',
             'blinker',
-            'parsedatetime==2.1',
-            'python-dateutil==2.4.2',
-            'pytimeparse==1.1.4',
             'pytz',
         ],
         extras_require = {

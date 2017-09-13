@@ -5,8 +5,8 @@ import datetime
 
 from mqe import reports
 from mqe.reports import Report
-from mqe.pars.enrichment import EnrichedTable
-from mqe.pars.parsing import Table
+from mqetables.enrichment import EnrichedTable
+from mqetables.parsing import Table
 from mqe import util
 
 utcnow = datetime.datetime.utcnow

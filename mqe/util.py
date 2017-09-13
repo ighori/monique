@@ -4,18 +4,15 @@ import random
 
 import datetime
 import time
-from time import mktime
 import re
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 import uuid
-import itertools
 from functools import wraps
 import calendar
 import importlib
 import sys
 import logging
 
-import parsedatetime
 import pytz
 
 
@@ -63,27 +60,10 @@ class DefaultFrozenDict(dict):
         raise ValueError('DefaultFrozenDict does not support __setitem__')
 
 
-def format_rows(rows):
-    lines = []
-    for row in rows:
-        r = repr(row)
-        lines.append(r)
-    lines_repr = ',\n'.join(lines)
-    return '[\n%s\n]\n' % lines_repr
-
-
 ### datetime
 
 MIN_DATETIME = datetime.datetime.utcfromtimestamp(0)
 MAX_DATETIME = datetime.datetime.utcfromtimestamp(0x7FFFFFFF)
-
-def datetime_from_struct_time(st):
-    return datetime.datetime.fromtimestamp(mktime(st))
-
-_pdt_cal = parsedatetime.Calendar()
-def parsedatetime_parse(s):
-    st = _pdt_cal.parse(s)[0]
-    return datetime_from_struct_time(st)
 
 def datetime_to_timestamp(dt):
     if dt.tzinfo is not None:
@@ -118,23 +98,6 @@ def next_dt(dt):
 
 def flatten(seq):
     return [el for subseq in seq for el in subseq]
-
-def strip(seq, to_strip, from_start=True, from_end=True):
-    start = 0
-    if from_start:
-        while True:
-            if start == len(seq):
-                return []
-            if not to_strip(seq[start]):
-                break
-            start += 1
-    end = len(seq)-1
-    if from_end:
-        while True:
-            if not to_strip(seq[end]):
-                break
-            end -= 1
-    return seq[start:end+1]
 
 def uniq_sameorder(lst, key=lambda x:x):
     seen = set() 
@@ -207,11 +170,6 @@ def dictwithout(d, *keys):
     keys_set = set(keys)
     return {k: d[k] for k in d if k not in keys_set}
 
-def dict_copy_with_item(d, k, v):
-    res = d.copy()
-    res[k] = v
-    return res
-
 def sort_dict_by_key(d):
     res = OrderedDict()
     for k in sorted(d.keys()):
@@ -226,20 +184,6 @@ def contains_dict(subdict, d):
             return False
     return True
 
-def remove_indexes(lst, indexes):
-    if not indexes:
-        return lst
-    indexes = set(indexes)
-    return [x for i, x in enumerate(lst) if i not in indexes]
-
-def count(seq):
-    if isinstance(seq, (list, tuple)):
-        return len(seq)
-    res = 0
-    for x in seq:
-        res += 1
-    return res
-
 def fill_to_len(lst, wanted_len, fill_gen):
     for i in range(len(lst), wanted_len):
         lst.append(fill_gen())
@@ -252,19 +196,13 @@ def valid_index(lst_or_len, idx):
             lst_or_len = len(lst_or_len)
     return 0 <= idx < lst_or_len
 
-def translate_indexes_after_deletion(idxs, deleted_idxs):
-    if not idxs:
-        return []
-    max_idx = max(idxs)
-    deleted_idxs = [idx for idx in deleted_idxs if idx <= max_idx]
-    res = []
-    for idx in idxs:
-        if idx in deleted_idxs:
-            continue
-        count_before = count(iidx for iidx in deleted_idxs if iidx < idx)
-        res.append(idx - count_before)
-    return res
-
+def avg(seq):
+    s = 0
+    l = 0
+    for x in seq:
+        s += x
+        l += 1
+    return s / l
 
 class CommonValue(object):
 
@@ -300,36 +238,6 @@ def common_value(seq):
 def simplify_whitespace(s):
     return ' '.join(s.split())
 
-def chars_positions(chars, s):
-    chars_set = set(chars)
-    res = defaultdict(list)
-    for i in xrange(len(s)):
-        if s[i] in chars_set:
-            res[s[i]].append(i)
-    return res
-
-def ranges(i):
-    for a, b in itertools.groupby(enumerate(i), lambda (x, y): y - x):
-        b = list(b)
-        yield b[0][1], b[-1][1]+1
-
-def chars_ranges(chars, s):
-    cp = chars_positions(chars, s)
-    return {c: list(ranges(cp[c])) for c in cp}
-
-def change_at(s, i, newsubstring):
-    return s[:i] + newsubstring + s[i+1:]
-
-def expand_tabs(astring, tablen=8):
-    result = []
-    for piece in astring.split('\t'):
-        result.append(piece)
-        result.append(' '*(tablen-len(piece)%tablen))
-    return ''.join(result[:-1])
-
-def has_content(s):
-    return s and any(c is not None and c.isalnum() for c in s)
-
 _re_word_split = re.compile(r'[^a-zA-Z_]+')
 def find_nonnumeric_words(s):
     words = _re_word_split.split(s)
@@ -338,59 +246,12 @@ def find_nonnumeric_words(s):
 
 ### number
 
-def get_num(x, num_fun, default):
-    if x is None:
-        return default
-    try:
-        return num_fun(x)
-    except ValueError:
-        return default
-
-def get_float(x, default=None):
-    return get_num(x, float, default)
-
-def get_int(x, default=None):
-    return get_num(x, int, default)
-
-def partition_numstr(s):
-    for i, c in enumerate(s):
-        if not c.isdigit() and c not in {'.', ','}:
-            k = i
-            break
-    else:
-        k = len(s)
-    return (get_float(s[:k].replace(',', '.')), s[k:])
-
-_re_find_number = re.compile(r'[-+]?\d+[\.]?\d*')
-def find_number(s):
-    m = first(_re_find_number.finditer(s))
-    if m is None:
-        return None
-    matched_s = m.group()
-    if '.' in matched_s:
-        return float(matched_s)
-    return int(matched_s)
-
-def find_all_number_strs(s):
-    return _re_find_number.findall(s)
-
-def avg(seq):
-    s = 0
-    l = 0
-    for x in seq:
-        s += x
-        l += 1
-    return s / l
-
 def rectangles_intersect(d1, d2):
     return not (d1['x']+d1['width']<=d2['x'] or \
                 d2['x']+d2['width']<=d1['x'] or \
                 d1['y']+d1['height']<=d2['y'] or \
                 d2['y']+d2['height']<=d1['y'])
 
-
-def is_number(x):
-    return isinstance(x, (int, float)) and not isinstance(x, bool)
 
 def is_number_or_bool(x):
     return isinstance(x, (int, float))

@@ -9,9 +9,9 @@ from mqe import mqeconfig
 from mqe import serialize
 from mqe import util
 from mqe.dbutil import Row, gen_timeuuid, TextColumn, ListColumn, TimeUUIDColumn, JsonColumn
-from mqe.pars import basicparsing
-from mqe.pars import parseany
-from mqe.pars import parsing
+from mqetables import basicparsing
+from mqetables import parseany
+from mqetables import parsing
 from mqe.signals import fire_signal, new_report
 
 log = logging.getLogger('mqe.reports')

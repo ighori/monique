@@ -4,6 +4,8 @@ import copy
 import logging
 from collections import OrderedDict, namedtuple, defaultdict
 
+from mqetables import util as tabutil
+
 from mqe import c
 from mqe import mqeconfig
 from mqe import serialize
@@ -314,7 +316,7 @@ def _label_score(ev):
     score = 1.0
 
     # lower score if numbers are present within string
-    nums = util.find_all_number_strs(ev.rich)
+    nums = tabutil.find_all_number_strs(ev.rich)
     nums_lowering = len(nums) if len(nums) < 5 else 5
     if nums_lowering:
         score -= nums_lowering * 0.1

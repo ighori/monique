@@ -32,7 +32,7 @@ Creating a report is achieved by calling the :meth:`~mqe.reports.Report.insert` 
     >    ['10', '20'],
     > ])
 
-We can see that the input ``10 20`` has been parsed into a one-row, two-cell table containing the numbers. The :attr:`~mqe.pars.parsing.Table.header_idxs` attribute tells which row indexes form a header - in our case there is no header.
+We can see that the input ``10 20`` has been parsed into a one-row, two-cell table containing the numbers. The :attr:`~mqetables.parsing.Table.header_idxs` attribute tells which row indexes form a header - in our case there is no header.
 
 .. _tutorial_points_report:
 

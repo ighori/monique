@@ -3,7 +3,7 @@ from collections import OrderedDict, namedtuple
 import datetime
 import colorsys
 
-from mqe.pars import enrichment
+from mqetables import enrichment
 from mqe import dataseries
 from mqe import util
 from mqe.util import safeget, cyclicget, nestedget, CommonValue

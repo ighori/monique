@@ -6,7 +6,7 @@ import uuid
 
 from mqe.dataseries import SeriesSpec, update_default_options, select_default_series_spec_options
 from mqe import reports
-from mqe.pars.enrichment import EnrichedValue
+from mqetables.enrichment import EnrichedValue
 from mqe import dataseries
 from mqe.dataseries import guess_series_spec
 from mqe.util import dictwithout, MIN_UUID

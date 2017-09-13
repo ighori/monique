@@ -305,7 +305,7 @@ The sample will be compiled to a test::
 
       A list of string arguments the tested value is checked against. If one of the tests succeeds, the whole test succeeds.
 
-      .. note:: Each argument must be a string. If a value present in a table is not a string, it's converted to a string using :meth:`~mqe.pars.enrichment.EnrichedValue.to_string_key`.
+      .. note:: Each argument must be a string. If a value present in a table is not a string, it's converted to a string using :meth:`~mqetables.enrichment.EnrichedValue.to_string_key`.
 
 
 
@@ -415,23 +415,6 @@ SSC, TPCreator
     :members:
 
 
-Parsing data into tables
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. automodule:: mqe.pars.parseany
-   :members:
-
-.. automodule:: mqe.pars.parsing
-   :members:
-
-.. automodule:: mqe.pars.basicparsing
-   :members:
-
-.. automodule:: mqe.pars.asciiparsing
-   :members:
-
-.. automodule:: mqe.pars.enrichment
-   :members:
 
 Signals
 ^^^^^^^

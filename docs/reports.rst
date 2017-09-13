@@ -52,7 +52,7 @@ The :meth:`.process_input` method that creates a report instance from a string i
 
 A creation :class:`~datetime.datetime` can be set explicitly with the ``created`` parameter. Note that the database model isn't optimized for submitting many report instances with a past datetime, and the parameter cannot be a future datetime.
 
-Setting an explicit :func:`input type <mqe.pars.parseany.parse_input>` saves time needed to detect an input format, and assures the parsing is correct.
+Setting an explicit :func:`input type <mqetables.parseany.parse_input>` saves time needed to detect an input format, and assures the parsing is correct.
 
 An explicit field delimiter can be passed explicitly as ``ip_options={'delimiter': delimiter}``.
 

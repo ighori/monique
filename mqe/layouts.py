@@ -665,9 +665,11 @@ def repack_mod():
         for tag in tags:
             if ':' in tag:
                 val_part = tag.split(':')[1]
-                num = util.get_int(val_part)
-                if num is not None:
-                    num_key = num
+                try:
+                    num_key = float(val_part)
+                except ValueError:
+                    pass
+                else:
                     break
         return (num_key, ','.join(tags))
 

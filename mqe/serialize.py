@@ -39,12 +39,14 @@ if getattr(sys, 'pypy_version_info', None):
 _TYPE_NAME_TO_CLASS = {}
 
 @run_once
-def _import_lib_modules():
-    from mqe.pars import enrichment
+def _init_lib_classes():
+    from mqetables import enrichment
+    register_json_type(enrichment.EnrichedTable, 'ET')
+
     from mqe import dataseries
 
 def _type_name_to_class(type_name):
-    _import_lib_modules()
+    _init_lib_classes()
     return _TYPE_NAME_TO_CLASS.get(type_name)
 
 def json_type(type_name):
@@ -53,10 +55,13 @@ def json_type(type_name):
     representing the class' instance.
     """
     def decorator(cls):
-        cls._json_type = type_name
-        _TYPE_NAME_TO_CLASS[type_name] = cls
+        register_json_type(cls, type_name)
         return cls
     return decorator
+
+def register_json_type(cls, type_name):
+    cls._json_type = type_name
+    _TYPE_NAME_TO_CLASS[type_name] = cls
 
 
 def encoder_default(obj):
