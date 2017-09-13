@@ -44,7 +44,7 @@ The library uses a model of [immutable layout and tile definitions](http://moniq
 
 ### Fetch data formatted for rendering a tile
 
-Data of a dashboard tile, preformatted for rendering, [can be fetched easily](http://monique-dashboards.readthedocs.io/en/latest/tutorial.html#tutorial-tile-data). The library manages data series' names and colors, and enables [customizing tiles](http://monique-dashboards.readthedocs.io/en/latest/tilewidgets.html#formatting-tile-data-tilewidgets-and-drawers). Monique Dashboards don't depend on any frontend libary.
+Data of a dashboard tile, preformatted for rendering, [can be fetched easily](http://monique-dashboards.readthedocs.io/en/latest/tutorial.html#tutorial-tile-data). The library manages data series' names and colors, and enables [customizing tiles](http://monique-dashboards.readthedocs.io/en/latest/tilewidgets.html#formatting-tile-data-tilewidgets-and-drawers). Monique Dashboards don't depend on any frontend library.
 
 ### Manage data series directly
 

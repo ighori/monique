@@ -65,7 +65,7 @@ class Dashboard(Row):
                  len(tile_by_id), self.dashboard_id, self.dashboard_name)
 
     def key(self):
-        return (self.owner_id, self.dashboard_id)
+        return self.owner_id, self.dashboard_id
 
 
 

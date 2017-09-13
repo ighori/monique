@@ -109,7 +109,7 @@ def is_transaction_applied(update_rows):
     return update_rows[0].get('[applied]')
 
 def execute_lwt(fun):
-    """Execute the function ``fun`` that makes a Cassandra lightweight transaction and returns the result rows and tell whether the transaction was successful. The :func:`execute_lwt` function handles the case when Cassandra doesn't know if the transation was applied.
+    """Execute the function ``fun`` that makes a Cassandra lightweight transaction and returns the result rows and tell whether the transaction was successful. The :func:`execute_lwt` function handles the case when Cassandra doesn't know if the transaction was applied.
 
     :return: ``True`` if applied, ``False`` if not applied, ``None`` if it's unknown if applied."""
     try:
@@ -150,7 +150,7 @@ class Cassandra(object):
 
     @cached_property
     def session(self):
-        "The :class:`cassandra.cluster.Session` object created from the :attr:`cluster` that allows executing queries. The :attr:`session` returns rows as dictionaries (instead of the default namedtuples)."
+        """The :class:`cassandra.cluster.Session` object created from the :attr:`cluster` that allows executing queries. The :attr:`session` returns rows as dictionaries (instead of the default namedtuples)."""
         try:
             csession = self.cluster.connect()
         except Exception as e:

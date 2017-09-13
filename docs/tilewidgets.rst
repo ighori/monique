@@ -133,7 +133,7 @@ The second are colors coming from **default options** - options previously assig
 
 The third are default colors defined in the config module as :attr:`mqe.mqeconfig.DEFAULT_COLORS`.
 
-The first and the third source doesn't require further explanation, but how default options work? After a tile is created, we can tell that we want its :data:`tile_options` to be included in a pool of default options available for other tiles by calling :func:`.update_default_options`. After doing it and creating another tile that uses the same |SeriesSpec|, the assigned series' color will come from the default options (unless it's overriden by :data:`tile_options.colors`). The sample code shows the behaviour::
+The first and the third source doesn't require further explanation, but how default options work? After a tile is created, we can tell that we want its :data:`tile_options` to be included in a pool of default options available for other tiles by calling :func:`.update_default_options`. After doing it and creating another tile that uses the same |SeriesSpec|, the assigned series' color will come from the default options (unless it's overridden by :data:`tile_options.colors`). The sample code shows the behaviour::
 
     from mqe.dataseries import update_default_options
 

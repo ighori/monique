@@ -92,7 +92,7 @@ class ReportInstance(Row):
     skip_printing = ('ri_data', 'input_string', 'day', 'tags')
 
     def key(self):
-        return (self.report_instance_id, tuple(self.all_tags))
+        return self.report_instance_id, tuple(self.all_tags)
 
 
 

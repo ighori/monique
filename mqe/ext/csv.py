@@ -108,7 +108,7 @@ class DictReader:
         # unlike the basic reader, we prefer not to return blanks,
         # because we will typically wind up with a dict full of None
         # values
-        while row == []:
+        while not row:
             row = self.reader.next()
         d = dict(zip(self.fieldnames, row))
         lf = len(self.fieldnames)
@@ -161,10 +161,10 @@ except NameError:
     complex = float
 
 class Sniffer:
-    '''
+    """
     "Sniffs" the format of a CSV file (i.e. delimiter, quotechar)
     Returns a Dialect object.
-    '''
+    """
     def __init__(self):
         # in case there is more than one possible delimiter
         self.preferred = [',', '\t', ';', ' ', ':']
@@ -223,7 +223,7 @@ class Sniffer:
 
         if not matches:
             # (quotechar, doublequote, delimiter, skipinitialspace)
-            return ('', False, None, 0)
+            return '', False, None, 0
         quotes = {}
         delims = {}
         spaces = 0
@@ -272,7 +272,7 @@ class Sniffer:
         else:
             doublequote = False
 
-        return (quotechar, doublequote, delim, skipinitialspace)
+        return quotechar, doublequote, delim, skipinitialspace
 
 
     _ascii = {chr(c) for c in range(127) if not chr(c).isalnum()} # 7-bit ASCII
@@ -349,14 +349,14 @@ class Sniffer:
                 delim = delims.keys()[0]
                 skipinitialspace = (data[0].count(delim) ==
                                     data[0].count("%c " % delim))
-                return (delim, skipinitialspace)
+                return delim, skipinitialspace
 
             # analyze another chunkLength lines
             start = end
             end += chunkLength
 
         if not delims:
-            return ('', 0)
+            return '', 0
 
         # if there's more than one, fall back to a 'preferred' list
         if len(delims) > 1:
@@ -364,7 +364,7 @@ class Sniffer:
                 if d in delims.keys():
                     skipinitialspace = (data[0].count(d) ==
                                         data[0].count("%c " % d))
-                    return (d, skipinitialspace)
+                    return d, skipinitialspace
 
         # nothing else indicates a preference, pick the character that
         # dominates(?)
@@ -374,7 +374,7 @@ class Sniffer:
 
         skipinitialspace = (data[0].count(delim) ==
                             data[0].count("%c " % delim))
-        return (delim, skipinitialspace)
+        return delim, skipinitialspace
 
 
     def has_header(self, sample, _sniff_result=None):

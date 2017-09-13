@@ -178,9 +178,9 @@ Sample :data:`tile_config`::
 
        An optional subset of :data:`tile_options` parameters that should be put into the final :data:`tile_options`.
 
-       For security reasons the follwing keys contained in the subset are ignored:
+       For security reasons the following keys contained in the subset are ignored:
 
-       * :data:`~tile_options.owner_id` and :data:`~tile_options.report_id` - the parameters must be explictly passed to the :meth:`~mqe.tiles.Tile.insert` or the :meth:`~mqe.tiles.Tile.insert_similar` method
+       * :data:`~tile_options.owner_id` and :data:`~tile_options.report_id` - the parameters must be explicitly passed to the :meth:`~mqe.tiles.Tile.insert` or the :meth:`~mqe.tiles.Tile.insert_similar` method
 
        * :data:`~tile_options.series_configs` - the attribute is compiled from :attr:`tile_config.series_spec_list`
 

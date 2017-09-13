@@ -260,7 +260,7 @@ class Tile(Row):
     def key(self):
         if self.tile_id is None:
             raise ValueError('Cannot compute hash/cmp key for non-inserted tile')
-        return (self.dashboard_id, self.tile_id)
+        return self.dashboard_id, self.tile_id
 
 
 
