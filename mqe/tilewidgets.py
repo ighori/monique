@@ -128,9 +128,11 @@ class Tilewidget(object):
 
     def get_tile_data(self, limit=None):
         """Called by :meth:`~mqe.tiles.Tile.get_tile_data`"""
-        data = {'report_name': self.tile.report.report_name,
-                'latest_extra_ri_data': {}}
+        data = {}
 
+        data['report_name'] = self.tile.report.report_name
+
+        data['latest_extra_ri_data'] = {}
         latest_rid = self.tile.report.fetch_latest_instance_id(self.tile_options['tags'])
         if latest_rid is not None:
             latest_extra_ri_data = c.dao.ReportInstanceDAO.select_extra_ri_data(self.tile.report_id,
@@ -164,7 +166,9 @@ class Tilewidget(object):
 
     def get_new_tile_data(self, after_report_instance_id):
         """Called by :meth:`~mqe.tiles.Tile.get_new_tile_data`"""
-        data = {'series_data': []}
+        data = {}
+
+        data['series_data'] = []
 
         self.fill_new_tile_data(data, after_report_instance_id)
 

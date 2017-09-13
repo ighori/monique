@@ -351,8 +351,8 @@ def guess_series_spec(report, report_instance, sample_rowno, sample_colno):
             return 0
         label_string_keys = [ev.to_string_key() for ev in label_vals]
 
-        row_occurrences = label_string_keys.count(row[colno].to_string_key())
-        if row_occurrences != 1:
+        row_occurences = label_string_keys.count(row[colno].to_string_key())
+        if row_occurences != 1:
             return 0
 
         uniq_vals = util.uniq_sameorder(label_string_keys)
@@ -477,7 +477,7 @@ class SeriesDef(Row):
         self['to_rid'] = to_rid
 
     def key(self):
-        return self['report_id'], self.tags, self['series_spec']
+        return (self['report_id'], self.tags, self['series_spec'])
 
 
 

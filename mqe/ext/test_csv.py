@@ -139,8 +139,7 @@ class Test_Csv(unittest.TestCase):
         # Check that exceptions are passed up the chain
         class BadList:
             def __len__(self):
-                return 10
-
+                return 10;
             def __getitem__(self, i):
                 if i > 2:
                     raise IOError
@@ -308,7 +307,7 @@ class Test_Csv(unittest.TestCase):
             self.assertRaises(StopIteration, r.next)
             self.assertEqual(r.line_num, 3)
 
-    def test_roundtrip_quoted_newlines(self):
+    def test_roundtrip_quoteed_newlines(self):
         fd, name = tempfile.mkstemp()
         fileobj = os.fdopen(fd, "w+b")
         try:

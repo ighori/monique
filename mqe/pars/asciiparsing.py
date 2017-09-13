@@ -172,7 +172,7 @@ class AsciiSurface(parsing.InputParser):
                 common = 0
             common_ratio = common / (token.end-token.start)
             distance = abs( ((token.start + token.end) / 2) - ((spec.col_end + spec.col_start) / 2) )
-            return common_ratio, -distance
+            return (common_ratio, -distance)
         for lineno, line_tokens in enumerate(self.tokens_by_lineno):
             if lineno in self.skipped_linenos:
                 continue

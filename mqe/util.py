@@ -359,7 +359,7 @@ def partition_numstr(s):
             break
     else:
         k = len(s)
-    return get_float(s[:k].replace(',', '.')), s[k:]
+    return (get_float(s[:k].replace(',', '.')), s[k:])
 
 _re_find_number = re.compile(r'[-+]?\d+[\.]?\d*')
 def find_number(s):

@@ -168,8 +168,10 @@ class Layout(object):
     def props_of_tile(self, tile):
         from mqe import tpcreator
 
-        props = {'report_id': tile.tile_options['report_id'],
-                 'tags': tile.tile_options['tags']}
+        props = {}
+
+        props['report_id'] = tile.tile_options['report_id']
+        props['tags'] = tile.tile_options['tags']
 
         if tile.has_sscs():
             props['sscs'] = 1
@@ -667,7 +669,7 @@ def repack_mod():
                 if num is not None:
                     num_key = num
                     break
-        return num_key, ','.join(tags)
+        return (num_key, ','.join(tags))
 
     def do_repack(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
@@ -679,11 +681,11 @@ def repack_mod():
             props = layout_mod.layout.get_tile_props(tile_id)
             master_id = props.get('master_id') if props else None
             if not master_id:
-                return tile_id_to_index[tile_id], DEFAULT_RICH_KEY
+                return (tile_id_to_index[tile_id], DEFAULT_RICH_KEY)
             if master_id not in tile_id_to_index:
                 #log.warn('No group leader in layout_dict')
-                return tile_id_to_index[tile_id], DEFAULT_RICH_KEY
-            return tile_id_to_index[master_id], _tags_to_rich_key(props.get('tags', []))
+                return (tile_id_to_index[tile_id], DEFAULT_RICH_KEY)
+            return (tile_id_to_index[master_id], _tags_to_rich_key(props.get('tags', [])))
 
         layout_dict_items.sort(key=key)
 

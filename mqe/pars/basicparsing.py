@@ -297,8 +297,8 @@ class JsonDeepParser(JsonParser):
                         raise parsing.NotParsable('Too many expanded')
 
                 if len(to_rewrite) == 1 and to_rewrite[0] is xdoc:
-                    return xdoc, False
-                return to_rewrite, True
+                    return (xdoc, False)
+                return (to_rewrite, True)
 
             if isinstance(xdoc, list):
                 res = []
@@ -308,9 +308,9 @@ class JsonDeepParser(JsonParser):
                         res.extend(rdoc)
                     else:
                         res.append(rdoc)
-                return res, False
+                return (res, False)
 
-            return xdoc, False
+            return (xdoc, False)
 
         def to_items(key, value):
             if not isinstance(value, dict) or (not value and key):
