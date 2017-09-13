@@ -1,0 +1,16 @@
+*.pyc
+*.so
+*.o
+*.sw*
+*~
+*.orig
+*.rej
+
+build
+dist
+*.egg-info
+venv*
+_build
+.idea
+
+mqeconfig_override.py
