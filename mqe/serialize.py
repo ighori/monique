@@ -60,7 +60,7 @@ def json_type(type_name):
     return decorator
 
 def register_json_type(cls, type_name):
-    cls._json_type = type_name
+    setattr(cls, '_json_type', type_name)
     _TYPE_NAME_TO_CLASS[type_name] = cls
 
 
@@ -68,6 +68,7 @@ def encoder_default(obj):
     if hasattr(obj, 'for_json'):
         res = obj.for_json()
         if isinstance(res, dict) and '__type__' not in res:
+            _init_lib_classes()
             res['__type__'] = obj._json_type
         return res
     if isinstance(obj, datetime.date):
