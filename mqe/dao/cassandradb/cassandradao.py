@@ -168,10 +168,10 @@ class CassReportDAO(ReportDAO):
                                    IF NOT EXISTS""",
                                   [owner_id, report_name, report_id])
         lwt_res = execute_lwt(insert_report_name)
-        if lwt_res == False:
+        if not lwt_res:
             log.info('Race condition in creating a new report %r', report_name)
             return None
-        elif lwt_res == None:
+        elif lwt_res is None:
             rows = c.cass.execute("""SELECT report_id FROM mqe.report_by_owner_id_report_name
                                    WHERE owner_id=? AND report_name=? /* SERIAL */""",
                                   [owner_id, report_name],
@@ -399,10 +399,9 @@ class CassReportInstanceDAO(ReportInstanceDAO):
         
         diskspace = self._compute_ri_diskspace(ri)
 
-        qs = []
-        qs.append(bind("""DELETE FROM mqe.report_instance_metadata
-                          WHERE report_id=? AND day=? AND report_instance_id=?""",
-                       [report_id, ri['day'], report_instance_id]))
+        qs = [bind("""DELETE FROM mqe.report_instance_metadata
+                      WHERE report_id=? AND day=? AND report_instance_id=?""",
+                   [report_id, ri['day'], report_instance_id])]
         for tags_subset in util.powerset(ri['all_tags']):
             tags_repr = tags_repr_from_tags(tags_subset)
             qs.append(bind("""DELETE FROM mqe.report_instance WHERE report_id=? AND day=? AND tags_repr=? AND report_instance_id=?""", [report_id, ri['day'], tags_repr, report_instance_id]))
@@ -697,10 +696,10 @@ class CassLayoutDAO(LayoutDAO):
             return update_rows
 
         lwt_res = execute_lwt(do_set_layout)
-        if lwt_res == False:
+        if not lwt_res:
             log.info('Setting new layout failed on LWT transaction')
             return False
-        if lwt_res == None:
+        if lwt_res is None:
             log.info('Setting new layout resulted in unknown LWT result')
             saved_layout_id = c.cass.execute_fst(
                     """SELECT {layout_id_colname} FROM mqe.dashboard_layout_def

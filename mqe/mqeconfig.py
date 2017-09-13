@@ -1,5 +1,5 @@
 ### The configuration of the Monique Dashboards library. The configuration can be
-### overriden by putting a subset of config variables in mqeconfig_override.py file
+### overridden by putting a subset of config variables in mqeconfig_override.py file
 ### (which must be in PYTHONPATH).
 
 

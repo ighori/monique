@@ -40,8 +40,7 @@ def suggested_tpcreator_prefixes(tag):
     """Returns a list of suggested tag prefixes that can be included in a
     :data:`tpcreator_uispec`: an empty string, the part until the ``:`` character
     and the full tag value."""
-    res = []
-    res.append('')
+    res = ['']
     if TPCREATOR_SEPARATOR in tag:
         res.append(_tpcreator_prefix(tag))
     res.append(tag)

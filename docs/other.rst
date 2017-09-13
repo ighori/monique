@@ -4,7 +4,7 @@ Other library features
 Configuration module
 --------------------
 
-The configuration module `mqeconfig.py <https://github.com/monique-dashboards/monique/mqe/mqeconfig.py>`_ specifies various options, including connection parameters to a database. The options can be overriden by putting the ``mqeconfig_override.py`` file in the ``$PYTHONPATH``. The config variables defined in the file will overwrite the default values present in ``mqeconfig.py``. The ``mqeconfig.py`` file could be also copied in whole into the ``mqeconfig_override.py`` file to enable editing all options.
+The configuration module `mqeconfig.py <https://github.com/monique-dashboards/monique/mqe/mqeconfig.py>`_ specifies various options, including connection parameters to a database. The options can be overridden by putting the ``mqeconfig_override.py`` file in the ``$PYTHONPATH``. The config variables defined in the file will overwrite the default values present in ``mqeconfig.py``. The ``mqeconfig.py`` file could be also copied in whole into the ``mqeconfig_override.py`` file to enable editing all options.
 
 An alternative way is to set the needed options in code, before using the library's code::
 

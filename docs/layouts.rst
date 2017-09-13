@@ -31,7 +31,7 @@ Sample code for applying the :func:`~mqe.layouts.place_tile` operation to a spec
 
     > New tile placed with visual_options {'width': 4, 'height': 4, 'x': 4, 'y': 0}
 
-The sample also shows a usage of the |lmr| object - a result of modifiying a layout returned by many functions. The object lists new, detached and replaced tiles.
+The sample also shows a usage of the |lmr| object - a result of modifying a layout returned by many functions. The object lists new, detached and replaced tiles.
 
 Detaching a tile from a layout is done in a similar way to placing, by calling :func:`.detach_tile`.
 
