@@ -33,7 +33,11 @@ When data is sent using a programming language, the preferred format is JSON. Th
 
 ### Auto-create new dashboard tiles
 
-The library supports [automatic creation of tiles](http://monique-dashboards.readthedocs.io/en/latest/tpcreator.html) by employing the concept of a **master tile** that can be copied. The feature handles cases when multiple instances of the same entity are present: servers, microservice instances, stock prices.
+The library supports [automatic creation of tiles](http://monique-dashboards.readthedocs.io/en/latest/tpcreator.html) by employing the concept of a **master tile** that can be copied. The feature handles cases when multiple instances of the same entity are present: servers, microservice instances, stock prices. An entity is identified by **tags**:
+
+    $ echo -en "requests 1000\nhealth OK" | curl --user WNKCPwiHfvIZRvfqsZa7Kai1: --request POST --data-binary @- \
+      https://mqeapi/reports/microservice?tags=name:search,pid:21234
+    
 
 ### Auto-create data series
 
