@@ -14,13 +14,14 @@ The library uses a **table** as the base data structure instead of a metric.  Ta
 The library comes with parsers for multiple formats, like JSON, CSV, ASCII tables, single numbers and words. It also auto-detects an input format, making submitting the data as easy as:
 
     # directly send 'psql' output
-
     $ psql -c "SELECT name, points FROM user ORDER BY points DESC" | \
       curl --user WNKCPwiHfvIZRvfqsZa7Kai1: --request POST --data-binary @- https://mqeapi/reports/points
 
     # directly send 'df' output
-
     $ df | curl --user WNKCPwiHfvIZRvfqsZa7Kai1: --request POST --data-binary @- https://mqeapi/reports/diskfree
+    
+    # directly send health check result
+    $ echo OK | curl --user WNKCPwiHfvIZRvfqsZa7Kai1: --request POST --data-binary @- https://mqeapi/reports/health
 
 When data is sent using a programming language, the preferred format is JSON. The library will parse any JSON document, but the canonical representation of a table is an array of objects mapping a column name to a value:
 
