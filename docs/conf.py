@@ -33,6 +33,7 @@ extensions = ['sphinx.ext.viewcode', 'sphinx.ext.autodoc', 'sphinx.ext.intersphi
 autodoc_member_order = 'bysource'
 
 intersphinx_mapping = {
+    'monique-tables': ('http://monique-tables.readthedocs.io/en/latest', None),
     'python': ('https://docs.python.org/2.7', None),
     'cassandra': ('https://datastax.github.io/python-driver/', None),
 }
