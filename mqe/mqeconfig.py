@@ -53,7 +53,7 @@ MAX_TAGS = 3
 
 def get_table_from_parsing_result(parsing_result):
     """The function enables custom postprocessing of parsed tables. It must return an
-    :class:`mqe.pars.enrichment.EnrichedTable` based on a :class:`mqe.pars.parseany.ParsingResult`.
+    :class:`mqetables.enrichment.EnrichedTable` based on a :class:`mqetables.parseany.ParsingResult`.
     The returned table will be saved into the database as a report instance data.
     If ``None`` will be returned, the report instance will not be created.
     """

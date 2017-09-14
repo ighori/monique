@@ -133,7 +133,7 @@ def enable_logging(debug=True, queries=True):
     add(logging.getLogger('mqeweb'), logging.DEBUG if debug else logging.INFO)
     add(logging.getLogger('mqeapi'), logging.DEBUG if debug else logging.INFO)
 
-    logging.getLogger('mqe.pars').setLevel(logging.WARN)
+    logging.getLogger('mqetables').setLevel(logging.WARN)
 
 def disable_logging():
     mqeconfig.DEBUG_QUERIES = False

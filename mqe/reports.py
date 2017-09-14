@@ -38,7 +38,7 @@ class ReportInstance(Row):
 
     @property
     def table(self):
-        """The data of this report instance as an :class:`~mqe.pars.enrichment.EnrichedTable`"""
+        """The data of this report instance as an :class:`~mqetables.enrichment.EnrichedTable`"""
         return self.ri_data.get('table')
 
     @property
@@ -174,8 +174,8 @@ class Report(Row):
         :param list tags: a list of string tags attached to the report instance
         :param ~datetime.datetime created: an explicit creation datetime of the report instance (
             default: the current datetime)
-        :param str input_type: input type (see :func:`mqe.pars.parseany.parse_input`)
-        :param dict ip_options: extra parser options (see :func:`mqe.pars.parsing.InputParser`)
+        :param str input_type: input type (see :func:`mqetables.parseany.parse_input`)
+        :param dict ip_options: extra parser options (see :func:`mqetables.parsing.InputParser`)
         :param force_header: a list of header rows indexes to set as a header (defaults to
             auto-detection)
         :param extra_ri_data: a custom JSON-serializable document attached to the report instance
@@ -354,7 +354,7 @@ class InputProcessingResult(namedtuple('InputProcessingResult',
 
     :ivar ReportInstance report_instance: the created report instance. ``None`` if no report
         instance was created
-    :ivar ~mqe.pars.parseany.ParsingResult: parsing_result: the detailed result of running the
+    :ivar ~mqetables.parseany.ParsingResult: parsing_result: the detailed result of running the
         parsers
     """
 
