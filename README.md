@@ -51,6 +51,12 @@ Data of a dashboard tile, preformatted for rendering, [can be fetched easily](ht
 
 A lower-level API for managing [data series](http://monique-dashboards.readthedocs.io/en/latest/dataseries.html#a-lower-level-interface-to-data-series) and [reports](http://monique-dashboards.readthedocs.io/en/latest/reports.html) is available.
 
+## How the library can be used
+
+- for creating full "custom dashboards" applications (similar to [Monique Web](https://github.com/monique-dashboards/monique-web)), allowing a user to dynamically create tiles
+- for creating predefined dashboards (replacing a "dashboard framework"). In that case data can be always sent using JSON. Auto-creating new dashboard tiles and data series can still be useful in that case.
+- for parsing and storing multiple input types. The data can be retrieved using a lower-level interface.
+
 
 ## Documentation
 
