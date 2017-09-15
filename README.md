@@ -21,23 +21,36 @@ Many inputs can be nicely represented as a table - SQL results, output of Unix u
 
 JSON files need a flattening algorithm, but the result can be quite natural. For example, a document
 
-
     {
-        "status": "OK",
-        "length": 12340,
-        "timings": [{
-            "connect": 0.120,
-            "dns": 0.212,
-            "download": 0.354
-        }, {
-            "connect": 0.150,
-            "dns": 0.012,
-            "download": 0.831
-        }]
-
+        "server": "192.168.1.10",
+        "checks": [{
+                "url": "http://web/login",
+                "length": 12340,
+                "timings": {
+                    "connect": 0.120,
+                    "dns": 0.212,
+                    "download": 0.354
+                }
+            }, {
+                "url": "http://web/docs",
+                "length": 3245340,
+                "timings": {
+                    "connect": 0.110,
+                    "dns": 0.018,
+                    "download": 1.345
+                }
+            }]
     }
 
+
+
 is converted to a table
+
+server | checks.url | checks.length | checks.timings.connect | checks.timings.dns | checks.timings.download
+-------|------------|---------------|------------------------|--------------------|----
+"192.168.1.10" | "http://web/login" | 12340 | 0.12 | 0.212 | 0.354
+
+
 
 status | length | timings.connect | timings.dns | timings.download
 -------|--------|-----------------|-------------|-----------------
