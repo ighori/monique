@@ -48,14 +48,8 @@ is converted to a table
 
 server | checks.url | checks.length | checks.timings.connect | checks.timings.dns | checks.timings.download
 -------|------------|---------------|------------------------|--------------------|----
-"192.168.1.10" | "http://web/login" | 12340 | 0.12 | 0.212 | 0.354
-
-
-
-status | length | timings.connect | timings.dns | timings.download
--------|--------|-----------------|-------------|-----------------
-"OK" | 12340 | 0.12 | 0.212 | 0.354
-"OK" | 12340 | 0.15 | 0.012 | 0.831
+192.168.1.10 | http://web/login | 12340 | 0.12 | 0.212 | 0.354
+192.168.1.10 | http://web/docs | 3245340 | 0.11 | 0.018 | 1.345
 
 
 How the data is extracted from the tables? Using data series specification of the form:
