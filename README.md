@@ -51,7 +51,7 @@ How the data is extracted from the tables? Using data series specification of th
 
 The library comes with a function that guesses the specification:
 
-![](https://vhex.net/public/ss-guessing.gif)
+![](https://vhex.net/public/ss_guessing.gif)
 
 
 ### Auto-parsing of JSON, ASCII tables, command output
