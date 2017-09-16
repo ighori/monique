@@ -13,7 +13,12 @@
 - it requires manual creation of each metric data point. Pushing metrics from JSON or SQL results is a very unwieldy task, requiring writing a lot of code and maintaining metric naming schemes
 - it's made mainly for numbers - single strings might be supported, but forget about JSON documents
 
-## Tagged tables as the solution
+## What's wrong with dashboard frameworks
+
+- they have complex APIs and assume you are a web developer
+- each use case, like displaying data from JSON or SQL results, requires writing custom, non-trivial code
+
+## The solution - a data structure able to represent multiple input formats 
 
 The library uses a **table** with an optional header and tags as the base data structure. Each cell is a JSON-serializable value.
 
@@ -87,7 +92,7 @@ When data is sent using a programming language, the preferred format is JSON. Th
 
 The library supports [automatic creation of tiles](http://monique-dashboards.readthedocs.io/en/latest/tpcreator.html) by employing the concept of a **master tile** that can be copied. The feature handles cases when multiple instances of the same entity are present: servers, microservice instances, stock prices. An entity is identified by **tags**:
 
-    $ echo -en "requests 1000\nhealth OK" | curl --user WNKCPwiHfvIZRvfqsZa7Kai1: --request POST --data-binary @- \
+    $ echo '{"requests": 1000, "health": OK"}' | curl --user WNKCPwiHfvIZRvfqsZa7Kai1: --request POST --data-binary @- \
       https://mqeapi/reports/microservice?tags=name:search,pid:21234
 
 The tiles created from a master tile are automatically synchronized:
