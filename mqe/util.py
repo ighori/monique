@@ -275,7 +275,7 @@ def uuid_for_string(s):
 
 def datetime_from_uuid1(u):
     unix_time = (u.time - 0x01B21DD213814000) / 1e7
-    return datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=unix_time)
+    return datetime.datetime.utcfromtimestamp(unix_time)
 
 def uuid_with_timestamp(microseconds, lowest_val=False, randomize=False):
     ts = int(microseconds * 10) + long(0x01b21dd213814000)
