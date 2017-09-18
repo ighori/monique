@@ -1,15 +1,15 @@
 import logging
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 import datetime
 import colorsys
 
 from mqetables import enrichment
 from mqe import dataseries
 from mqe import util
-from mqe.util import safeget, cyclicget, nestedget, CommonValue
+from mqe.util import safeget, cyclicget, nestedget, CommonValue, cached_property, undefined
 from mqe import mqeconfig
 from mqe import serialize
-from mqe.serialize import mjson
+from mqe.serialize import mjson, json_loads
 from mqe import c
 
 
@@ -19,8 +19,9 @@ log = logging.getLogger('mqe.tilewidgets')
 DEFAULT_SECONDS_BACK = 7 * 86400
 
 
-class DataPoint(namedtuple('DataPoint', ('rid', 'dt', 'value'))):
-    """A namedtuple representing a single data series point.
+class DataPoint(object):
+    """A representation of a single data series point. The JSON representation
+    is an array containing the three attributes.
 
     .. attribute:: rid
 
@@ -35,12 +36,71 @@ class DataPoint(namedtuple('DataPoint', ('rid', 'dt', 'value'))):
         the value extracted from a report instance's cell
     """
 
+    def __init__(self, rid, value_raw=undefined, value_py=undefined):
+        # The value_raw is a JSON representation of the value that can
+        # be passed for optimized JSON serialization, value_py is a Python value
+        self.rid = rid
+        self.value_raw = value_raw
+        self.value_py = value_py
+
+    @cached_property
+    def dt(self):
+        return util.datetime_from_uuid1(self.rid)
+
+    @property
+    def value(self):
+        if self.value_raw is not undefined:
+            self.value_py = json_loads(self.value_raw)
+        if self.value_py is not undefined:
+            return self.value_py
+        raise ValueError('No value set for DataPoint')
+
+    def replace_value(self, new_value):
+        self.value_raw = undefined
+        self.value_py = new_value
+
+    def __getitem__(self, key):
+        if key == 0:
+            return self.rid
+        if key == 1:
+            return self.dt
+        if key == 2:
+            return self.value
+        raise IndexError(key)
 
     @staticmethod
     def from_series_value(series_value):
-        return DataPoint(series_value['report_instance_id'],
-                         util.datetime_from_uuid1(series_value['report_instance_id']),
-                         series_value.value)
+        return DataPoint(series_value.row['report_instance_id'],
+                         value_raw=series_value.row['json_value'])
+
+    @staticmethod
+    def from_custom_value(rid, value):
+        return DataPoint(rid, value_py=value)
+
+    def __cmp__(self, other):
+        if not isinstance(other, DataPoint):
+            return -1
+        if self.value_raw is not undefined and other.value_raw is not undefined:
+            self_value_item = self.value_raw
+            other_value_item = other.value_raw
+        else:
+            self_value_item = self.value
+            other_value_item = other.value
+        return cmp((self.rid, self_value_item), (other.rid, other_value_item))
+
+    def __hash__(self):
+        return hash(self.rid)
+
+    def for_json(self):
+        return [
+            {'__type__': 'UUID', 'arg': self.rid.hex},
+            {'__type__': 'date', 'arg': util.timestamp_from_uuid1(self.rid) * 1000},
+            self.value,
+        ]
+
+    def __str__(self):
+        return 'DataPoint(rid={self.rid}, dt={self.dt}, value={self.value}'.format(self=self)
+    __repr__ = __str__
 
 
 def is_value_charts_compatible(val):
@@ -255,9 +315,7 @@ class TilewidgetForRange(Tilewidget):
             value_list = []
             common_header = CommonValue()
             for row in rows:
-                point = DataPoint.from_series_value(row)
-                if point:
-                    value_list.append(point)
+                value_list.append(DataPoint.from_series_value(row))
                 if row.header:
                     common_header.present(row.header)
 
@@ -321,9 +379,7 @@ class TilewidgetForSingle(Tilewidget):
             if not cell:
                 data_points = []
             else:
-                data_points = [DataPoint(ri['report_instance_id'],
-                                         util.datetime_from_uuid1(ri['report_instance_id']),
-                                         cell.value)]
+                data_points = [DataPoint.from_custom_value(ri['report_instance_id'], cell.value)]
             data['series_data'].append({
                 'series_id': series_config['series_id'],
                 'data_points': data_points,
@@ -462,7 +518,7 @@ class ChartDrawerBase(Drawer):
                 ev = enrichment.EnrichedValue(data_point.value)
                 converted = ev.optimistic_as_number
                 if converted is not None:
-                    sd['data_points'][i] = data_point._replace(value=converted)
+                    sd['data_points'][i].replace_value(converted)
                 else:
                     non_number_idxs.add(i)
 

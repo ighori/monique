@@ -273,9 +273,11 @@ def uuid_lt(u1, u2):
 def uuid_for_string(s):
     return uuid.uuid3(uuid.NAMESPACE_OID, s)
 
+def timestamp_from_uuid1(u):
+    return (u.time - 0x01B21DD213814000) / 1e7
+
 def datetime_from_uuid1(u):
-    unix_time = (u.time - 0x01B21DD213814000) / 1e7
-    return datetime.datetime.utcfromtimestamp(unix_time)
+    return datetime.datetime.utcfromtimestamp(timestamp_from_uuid1(u))
 
 def uuid_with_timestamp(microseconds, lowest_val=False, randomize=False):
     ts = int(microseconds * 10) + long(0x01b21dd213814000)
