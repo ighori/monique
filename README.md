@@ -131,6 +131,14 @@ The documentation is available on [Read The Docs](http://monique-dashboards.read
 
 Monique Dashboards support SQLite3 and Cassandra databases. The first option enables simple, server-less setups, while the second supports mission-critical setups run using multi-server clusters. The installation instructions are available on [Read The Docs](http://monique-dashboards.readthedocs.io/en/latest/installation.html#a-lower-level-interface-to-data-series). [Monique Web](https://github.com/monique-dashboards/monique-web) and [Monique API](https://github.com/monique-dashboards/monique-api) require their own installation steps.
 
+## Contributing
+
+There are a few areas that would benefit from contributions:
+
+- layout placing algorithms. The current algorithms are correct, but naive (the algorithms have quadratic complexity - see for example the function `layouts._xy_visual_options_first_match`)
+- PostgreSQL support. The most popular database should be supported as a middleground between SQLite3 and Cassandra (plus some environments like Heroku don't support SQLite3 or Cassandra). Monique uses a well defined DAO interface so the task shouldn't be hard (see `mqe.dao.sqlite3dao.sqlite3db` as an example). The biggest problem is probably a proper implementation of storing TimeUUIDs that must be sortable and support range queries.
+- implementing more [Drawers](http://monique-dashboards.readthedocs.io/en/latest/tilewidgets.html#creating-custom-tilewidgets-and-drawers) - classes that enrich `tile_data` in some specific way. For example, they could compute a percent change of the latest value or modify the used colors.
+
 ## Who uses Monique Dashboards
 
 * [Monique.io](https://monique.io) - an enhanced web application + Javascript alarming, run using a highly-available cluster
