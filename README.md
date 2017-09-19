@@ -118,7 +118,7 @@ A lower-level API for managing [data series](http://monique-dashboards.readthedo
 ## How the library can be used
 
 - for creating full "custom dashboards" applications (similar to [Monique Web](https://github.com/monique-dashboards/monique-web)), allowing a user to dynamically create tiles
-- for creating predefined dashboards (replacing a "dashboard framework"). In that case data can be always sent using JSON. Auto-creating new dashboard tiles and data series can still be useful in that case.
+- for creating predefined dashboards. Even when the auto-parsing feature is not used and the data is always submitted from your own code using JSON, the library is still useful: it allows managing dashboards, storing and fetching data. Auto-creating new dashboard tiles and data series can still be useful in that case.
 - for parsing and storing multiple input types. The data can be retrieved using a lower-level interface.
 
 
