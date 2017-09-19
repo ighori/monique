@@ -244,16 +244,21 @@ class SeriesSpec(object):
         if self.params.get('filtering_colno') != -1:
             return
 
+        cell = self.get_cell(report_instance)
+        if not cell:
+            return
+
+        # For single-column tables use just the row number
+        if report_instance.table.num_columns == 1:
+            self.params['static_name'] = str(cell.rowno)
+            return
+
         # The series spec must point to the single value row
         if report_instance.table.header_idxs:
             first_value_idx = report_instance.table.header_idxs[-1] + 1
         else:
             first_value_idx = 0
         if first_value_idx != report_instance.table.num_rows - 1:
-            return
-
-        cell = self.get_cell(report_instance)
-        if not cell:
             return
 
         if cell.rowno == first_value_idx:

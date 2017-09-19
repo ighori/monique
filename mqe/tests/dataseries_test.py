@@ -109,9 +109,9 @@ class SeriesSpecTest(unittest.TestCase):
         ss3.tweak_computed_name(ri)
         self.assertEqual('monique', ss3.name())
 
-    def test_tweak_computed_headerless(self):
+    def test_tweak_computed_name_headerless(self):
         owner_id = uuid.uuid4()
-        rep = reports.Report.insert(owner_id, 'json_report')
+        rep = reports.Report.insert(owner_id, 'num_report')
         ri = rep.process_input('23').report_instance
 
         ss = SeriesSpec(0, -1, {'op': 'eq', 'args': ['0']})
@@ -129,6 +129,21 @@ class SeriesSpecTest(unittest.TestCase):
         self.assertEqual('col. 0 (1)', ss.name())
         ss.tweak_computed_name(ri)
         self.assertEqual('col. 0 (1)', ss.name())
+
+    def test_tweak_computed_name_single_column(self):
+        owner_id = uuid.uuid4()
+        rep = reports.Report.insert(owner_id, 'col_report')
+        ri = rep.process_input('1\n2').report_instance
+
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': ['0']})
+        self.assertEqual('col. 0 (0)', ss.name())
+        ss.tweak_computed_name(ri)
+        self.assertEqual('0', ss.name())
+
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': ['1']})
+        self.assertEqual('col. 0 (1)', ss.name())
+        ss.tweak_computed_name(ri)
+        self.assertEqual('1', ss.name())
 
 
 class GuessSeriesSpecTest(unittest.TestCase):
