@@ -231,6 +231,11 @@ class SeriesSpec(object):
             self.params['static_name'] = 'value'
             return
 
+        # The rest of customization is for series specs that use the virtual column
+        if self.params.get('filtering_colno') != -1:
+            return
+
+        # The series spec must point to the single value row
         if report_instance.table.header_idxs:
             first_value_idx = report_instance.table.header_idxs[-1] + 1
         else:

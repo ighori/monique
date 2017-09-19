@@ -87,7 +87,7 @@ class SeriesSpecTest(unittest.TestCase):
         inst = [OrderedDict([('c1', 10), ('c2', 20)])]
         ri = rep.process_input(json.dumps(inst)).report_instance
 
-        ss = SeriesSpec(1, -1, {'op': 'eq', 'args': '1'})
+        ss = SeriesSpec(1, -1, {'op': 'eq', 'args': ['1']})
         ss.promote_colnos_to_headers(ri)
         self.assertEqual('c2 (1)', ss.name())
         ss.tweak_computed_name(ri)
@@ -96,29 +96,36 @@ class SeriesSpecTest(unittest.TestCase):
         inst = [OrderedDict([('c1', 10), ('c2', 20)]),
                 OrderedDict([('c1', 11), ('c2', 21)])]
         ri = rep.process_input(json.dumps(inst)).report_instance
-        ss2 = SeriesSpec(1, -1, {'op': 'eq', 'args': '1'})
+        ss2 = SeriesSpec(1, -1, {'op': 'eq', 'args': ['1']})
         ss2.promote_colnos_to_headers(ri)
         self.assertEqual('c2 (1)', ss2.name())
         ss2.tweak_computed_name(ri)
         self.assertEqual('c2 (1)', ss2.name())
+
+        inst = [OrderedDict([('c1', 'monique'), ('c2', 20)])]
+        ri = rep.process_input(json.dumps(inst)).report_instance
+        ss3 = SeriesSpec(1, 0, {'op': 'eq', 'args': ['monique']})
+        ss3.promote_colnos_to_headers(ri)
+        ss3.tweak_computed_name(ri)
+        self.assertEqual('monique', ss3.name())
 
     def test_tweak_computed_headerless(self):
         owner_id = uuid.uuid4()
         rep = reports.Report.insert(owner_id, 'json_report')
         ri = rep.process_input('23').report_instance
 
-        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': ['0']})
         self.assertEqual('col. 0 (0)', ss.name())
         ss.tweak_computed_name(ri)
         self.assertEqual('value', ss.name())
 
         ri = rep.process_input('1 2\n3 4\n5 6').report_instance
-        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': ['0']})
         self.assertEqual('col. 0 (0)', ss.name())
         ss.tweak_computed_name(ri)
         self.assertEqual('col. 0 (0)', ss.name())
 
-        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '1'})
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': ['1']})
         self.assertEqual('col. 0 (1)', ss.name())
         ss.tweak_computed_name(ri)
         self.assertEqual('col. 0 (1)', ss.name())
