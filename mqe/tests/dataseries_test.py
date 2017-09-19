@@ -84,8 +84,7 @@ class SeriesSpecTest(unittest.TestCase):
     def test_tweak_computed_name(self):
         owner_id = uuid.uuid4()
         rep = reports.Report.insert(owner_id, 'json_report')
-        inst = [OrderedDict([('c1', 10), ('c2', 20)]),
-                OrderedDict([('c1', 11), ('c2', 21)])]
+        inst = [OrderedDict([('c1', 10), ('c2', 20)])]
         ri = rep.process_input(json.dumps(inst)).report_instance
 
         ss = SeriesSpec(1, -1, {'op': 'eq', 'args': '1'})
@@ -94,11 +93,14 @@ class SeriesSpecTest(unittest.TestCase):
         ss.tweak_computed_name(ri)
         self.assertEqual('c2', ss.name())
 
-        ss2 = SeriesSpec(1, -1, {'op': 'eq', 'args': '2'})
+        inst = [OrderedDict([('c1', 10), ('c2', 20)]),
+                OrderedDict([('c1', 11), ('c2', 21)])]
+        ri = rep.process_input(json.dumps(inst)).report_instance
+        ss2 = SeriesSpec(1, -1, {'op': 'eq', 'args': '1'})
         ss2.promote_colnos_to_headers(ri)
-        self.assertEqual('c2 (2)', ss2.name())
+        self.assertEqual('c2 (1)', ss2.name())
         ss2.tweak_computed_name(ri)
-        self.assertEqual('c2 (2)', ss2.name())
+        self.assertEqual('c2 (1)', ss2.name())
 
     def test_tweak_computed_headerless(self):
         owner_id = uuid.uuid4()
@@ -114,7 +116,7 @@ class SeriesSpecTest(unittest.TestCase):
         ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})
         self.assertEqual('col. 0 (0)', ss.name())
         ss.tweak_computed_name(ri)
-        self.assertEqual('col. 0', ss.name())
+        self.assertEqual('col. 0 (0)', ss.name())
 
         ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '1'})
         self.assertEqual('col. 0 (1)', ss.name())

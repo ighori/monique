@@ -235,7 +235,7 @@ class SeriesSpec(object):
             first_value_idx = report_instance.table.header_idxs[-1] + 1
         else:
             first_value_idx = 0
-        if not 0 <= first_value_idx < report_instance.table.num_rows:
+        if first_value_idx != report_instance.table.num_rows - 1:
             return
 
         cell = self.get_cell(report_instance)
