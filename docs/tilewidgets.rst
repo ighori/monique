@@ -181,6 +181,7 @@ A |SeriesSpec| object has a name that is included in :data:`tile_data.series_dat
 
     > monique's points
 
+To improve the quality of series' names computed automatically, the method :meth:`.tweak_computed_name` can be called, which based on a sample report instance recognizes if the names should include a row number or a header.
 
 Creating custom tilewidgets and drawers
 ---------------------------------------
