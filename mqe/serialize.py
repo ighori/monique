@@ -125,11 +125,12 @@ class MqeJSONDecoder(json.JSONDecoder):
 
 def json_dumps(obj, indent=2):
     """Serialize ``obj`` to a string"""
-    return json.dumps(obj, default=encoder_default, indent=indent)
+    return json.dumps(obj, default=encoder_default, indent=indent, check_circular=False)
 
 def json_dumps_sorted(obj, indent=2):
     """Sort keys of ``obj`` and serialize it to a string"""
-    return json.dumps(obj, default=encoder_default, indent=indent, sort_keys=True)
+    return json.dumps(obj, default=encoder_default, indent=indent, check_circular=False,
+                      sort_keys=True)
 
 def json_dumps_external(obj, indent=2):
     """Serialize ``obj`` to a string, but drop the library's support of ``__type__`` keys and use a
@@ -139,16 +140,18 @@ def json_dumps_external(obj, indent=2):
     * encode datetimes by calling :meth:`datetime.datetime.isoformat`
     * encode custom classes by calling ``for_external_json``
     """
-    return json.dumps(obj, default=external_encoder_default, indent=indent)
+    return json.dumps(obj, default=external_encoder_default, indent=indent, check_circular=False)
 
 def mjson(obj):
     """Serialize ``obj`` to a string and use a minimal representation (no unneeded whitespaces
     and newlines)"""
-    return json.dumps(obj, default=encoder_default, indent=None, separators=(',', ':'))
+    return json.dumps(obj, default=encoder_default, indent=None, check_circular=False,
+                      separators=(',', ':'))
 
 def mjson_external(obj):
     """The same as :func:`mjson`, but use a format described for :func:`json_dumps_external`"""
-    return json.dumps(obj, default=external_encoder_default, indent=None, separators=(',', ':'))
+    return json.dumps(obj, default=external_encoder_default, indent=None,
+                      check_circular=False, separators=(',', ':'))
 
 def json_loads(s):
     """Deserialize a JSON document contained in the string ``s``"""
