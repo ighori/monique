@@ -394,8 +394,8 @@ class TPCreatorTest(unittest.TestCase):
             ],
             'tile_options': {
                 'tpcreator_uispec': [{'tag': 'p1:10', 'prefix': 'p1:'},
-                                     {'tag': 'p1:20', 'prefix': 'p2:'},
-                                     {'tag': 'zzz', 'prefix': 'aaa'}],
+                                     {'tag': 'p1:20', 'prefix': 'p1:'},
+                                     {'tag': 'zzz', 'prefix': 'z'}],
             }
         }
         owner_id = uuid.uuid1()
@@ -404,13 +404,13 @@ class TPCreatorTest(unittest.TestCase):
         master_tile = Tile.insert(owner_id, r.report_id, dashboard_id_1, tile_config)
         layouts.place_tile(master_tile)
 
-        r.process_input('1', tags=['p1:11', 'p2:12'])
+        r.process_input('1', tags=['p1:11', 'p1:12'])
         self.assertEqual(1, len(Layout.select(owner_id, dashboard_id_1).layout_dict))
 
-        r.process_input('1', tags=['p1:11', 'p2:12', 'aaa'])
+        r.process_input('1', tags=['p1:11', 'p2:12', 'zz'])
         layout = Layout.select(owner_id, dashboard_id_1)
         self.assertEqual(2, len(layout.layout_dict))
-        self.assertIn(['aaa', 'p1:11', 'p2:12'], [t.tags for t in layout.tile_dict])
+        self.assertIn(['p1:11', 'zz'], [t.tags for t in layout.tile_dict])
 
         r.process_input('1', tags=['p2:12', 'aaa', 'p1:11',])
         layout = Layout.select(owner_id, dashboard_id_1)

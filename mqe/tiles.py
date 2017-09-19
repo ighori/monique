@@ -232,6 +232,28 @@ class Tile(Row):
             if not isinstance(ss, dataseries.SeriesSpec):
                 raise ValueError('series_spec_list must be a list of SeriesSpec objects')
 
+        tile_options = tile_config.get('tile_options')
+        if tile_options:
+
+            if tile_options.get('sscs'):
+                if not isinstance(tile_options['sscs'], dataseries.SeriesSpec):
+                    raise ValueError('sscs must a SeriesSpec object')
+
+            if tile_options.get('tpcreator_uispec'):
+                if not isinstance(tile_options['tpcreator_uispec'], list):
+                    raise ValueError('tpcreator_uispec must be a list')
+                for d in tile_options['tpcreator_uispec']:
+                    if not isinstance(d, dict):
+                        raise ValueError('Each element of tpcreator_uispec must be a dict')
+                    if not 'tag' in d or not 'prefix' in d:
+                        raise ValueError('tpcreator_uispec dict must have "tag" and "prefix" keys')
+                    if not all(isinstance(v, basestring) for v in d.values()):
+                        raise ValueError('tpcreator_uispec dict values must be strings')
+                    if not d['tag'].startswith(d['prefix']):
+                        raise ValueError('tpcreator_uispec\'s tag %r doesn\'t start with prefix %r' %
+                                         (d['tag'], d['prefix']))
+
+
     def get_tile_data(self, limit=None):
         """Returns :attr:`tile_data` based on the tile's :attr:`tile_options`, possibly
         limiting the number of returned data points for each data series"""
