@@ -79,6 +79,7 @@ class SeriesSpec(object):
 
     def get_cell(self, report_instance):
         """Get a :class:`Cell` from a report instance specified by this :class:`SeriesSpec`.
+        If the :class:`Cell` couldn't be extracted, return ``None``.
         """
         actual_data_colno = self.actual_data_colno(report_instance)
         if actual_data_colno is None:
@@ -188,11 +189,13 @@ class SeriesSpec(object):
         """
         self.params['name'] = name
 
+
     def promote_colnos_to_headers(self, report_instance):
-        """Use column headers instead of column numbers for selecting values. The headers
-        are taken from the table of the ``report_instance`` and are put into
-        ``params['data_column_header']`` and ``params[ 'filtering_column_header']``,
-        which replace ``params['data_colno']`` and ``params['filtering_colno']``.
+        """Use column headers instead of column numbers for selecting values
+        and computing the default series name. The headers are taken from the table of the
+        ``report_instance`` and are put into ``params['data_column_header']`` and
+        ``params[ 'filtering_column_header']``, which replace ``params['data_colno']``
+         and ``params['filtering_colno']``.
 
         :param report_instance: a report instance from which to take column headers
         :type report_instance: :class:`~mqe.reports.ReportInstance`
@@ -212,6 +215,36 @@ class SeriesSpec(object):
                 and report_instance.table.has_header:
             self.params['data_column_header_for_name'] = report_instance.table.header(
                 self.params['data_colno'])
+
+
+    def tweak_computed_name(self, report_instance):
+        """Tweak the computed :meth:`name` based on a sample report instance for
+        which the :class:`SeriesSpec` is defined. The method looks for default series
+        names available for the report and uses headers from the report instance
+        to produce nicer labels."""
+        default_options = select_default_series_spec_options(report_instance.report_id, [self])[0]
+        if default_options.get('name'):
+            self.params['static_name'] = default_options['name']
+            return
+
+        if report_instance.table.num_rows == 1 and report_instance.table.num_columns == 1:
+            self.params['static_name'] = 'value'
+            return
+
+        if report_instance.table.header_idxs:
+            first_value_idx = report_instance.table.header_idxs[-1] + 1
+        else:
+            first_value_idx = 0
+        if not 0 <= first_value_idx < report_instance.table.num_rows:
+            return
+
+        cell = self.get_cell(report_instance)
+        if not cell:
+            return
+
+        if cell.rowno == first_value_idx:
+            self.params['static_name'] = self.params.get('data_column_header_for_name') or \
+                                         'col. %s' % self.params['data_colno']
 
 
     def actual_data_colno(self, report_instance):
@@ -378,17 +411,7 @@ def guess_series_spec(report, report_instance, sample_rowno, sample_colno):
 
     res.promote_colnos_to_headers(report_instance)
 
-    if res.params['data_colno'] is not None and res.params['data_colno'] >= 0 \
-            and report_instance.table.has_header:
-        res.params['data_column_header_for_name'] = report_instance.table.header(
-            res.params['data_colno'])
-
-    if report_instance.table.num_rows == 1 and report_instance.table.num_columns == 1:
-        res.params['static_name'] = 'value'
-
-    default_options = select_default_series_spec_options(report.report_id, [res])[0]
-    if default_options.get('name'):
-        res.set_name(default_options['name'])
+    res.tweak_computed_name(report_instance)
 
     return res
 

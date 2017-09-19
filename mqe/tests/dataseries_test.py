@@ -3,6 +3,7 @@ import json
 import datetime
 from datetime import timedelta
 import uuid
+from collections import OrderedDict
 
 from mqe.dataseries import SeriesSpec, update_default_options, select_default_series_spec_options
 from mqe import reports
@@ -79,6 +80,46 @@ class SeriesSpecTest(unittest.TestCase):
 
         ss.promote_colnos_to_headers(ri)
         self.assertEqual('points (1)', ss.name())
+
+    def test_tweak_computed_name(self):
+        owner_id = uuid.uuid4()
+        rep = reports.Report.insert(owner_id, 'json_report')
+        inst = [OrderedDict([('c1', 10), ('c2', 20)]),
+                OrderedDict([('c1', 11), ('c2', 21)])]
+        ri = rep.process_input(json.dumps(inst)).report_instance
+
+        ss = SeriesSpec(1, -1, {'op': 'eq', 'args': '1'})
+        ss.promote_colnos_to_headers(ri)
+        self.assertEqual('c2 (1)', ss.name())
+        ss.tweak_computed_name(ri)
+        self.assertEqual('c2', ss.name())
+
+        ss2 = SeriesSpec(1, -1, {'op': 'eq', 'args': '2'})
+        ss2.promote_colnos_to_headers(ri)
+        self.assertEqual('c2 (2)', ss2.name())
+        ss2.tweak_computed_name(ri)
+        self.assertEqual('c2 (2)', ss2.name())
+
+    def test_tweak_computed_headerless(self):
+        owner_id = uuid.uuid4()
+        rep = reports.Report.insert(owner_id, 'json_report')
+        ri = rep.process_input('23').report_instance
+
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})
+        self.assertEqual('col. 0 (0)', ss.name())
+        ss.tweak_computed_name(ri)
+        self.assertEqual('value', ss.name())
+
+        ri = rep.process_input('1 2\n3 4\n5 6').report_instance
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})
+        self.assertEqual('col. 0 (0)', ss.name())
+        ss.tweak_computed_name(ri)
+        self.assertEqual('col. 0', ss.name())
+
+        ss = SeriesSpec(0, -1, {'op': 'eq', 'args': '1'})
+        self.assertEqual('col. 0 (1)', ss.name())
+        ss.tweak_computed_name(ri)
+        self.assertEqual('col. 0 (1)', ss.name())
 
 
 class GuessSeriesSpecTest(unittest.TestCase):
