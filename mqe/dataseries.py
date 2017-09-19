@@ -231,39 +231,45 @@ class SeriesSpec(object):
         which the :class:`SeriesSpec` is defined. The method looks for default series
         names available for the report and uses headers from the report instance
         to produce nicer labels."""
+
+        def tweak():
+            if report_instance.table.num_rows == 1 and report_instance.table.num_columns == 1:
+                self.params['static_name'] = 'value'
+                return
+
+            # The rest of customization is for series specs that use the virtual column
+            if self.params.get('filtering_colno') != -1:
+                return
+
+            cell = self.get_cell(report_instance)
+            if not cell:
+                return
+
+            # For single-column tables use just the row number
+            if report_instance.table.num_columns == 1:
+                self.params['static_name'] = str(cell.rowno)
+                return
+
+            # The series spec must point to the single value row
+            if report_instance.table.header_idxs:
+                first_value_idx = report_instance.table.header_idxs[-1] + 1
+            else:
+                first_value_idx = 0
+            if first_value_idx != report_instance.table.num_rows - 1:
+                return
+
+            if cell.rowno == first_value_idx:
+                self.params['static_name'] = self.params.get('data_column_header_for_name') or \
+                                             'col. %s' % self.params['data_colno']
+
+        # Make sure the auto-tweaks are applied first, before default options are fetched
+        tweak()
+
         default_options = select_default_series_spec_options(report_instance.report_id, [self])[0]
         if default_options.get('name'):
             self.params['static_name'] = default_options['name']
             return
 
-        if report_instance.table.num_rows == 1 and report_instance.table.num_columns == 1:
-            self.params['static_name'] = 'value'
-            return
-
-        # The rest of customization is for series specs that use the virtual column
-        if self.params.get('filtering_colno') != -1:
-            return
-
-        cell = self.get_cell(report_instance)
-        if not cell:
-            return
-
-        # For single-column tables use just the row number
-        if report_instance.table.num_columns == 1:
-            self.params['static_name'] = str(cell.rowno)
-            return
-
-        # The series spec must point to the single value row
-        if report_instance.table.header_idxs:
-            first_value_idx = report_instance.table.header_idxs[-1] + 1
-        else:
-            first_value_idx = 0
-        if first_value_idx != report_instance.table.num_rows - 1:
-            return
-
-        if cell.rowno == first_value_idx:
-            self.params['static_name'] = self.params.get('data_column_header_for_name') or \
-                                         'col. %s' % self.params['data_colno']
 
 
     def actual_data_colno(self, report_instance):
