@@ -61,11 +61,20 @@ class SeriesSpec(object):
     """
 
     def __init__(self, data_colno, filtering_colno, filtering_expr):
+        self._validate_filtering_expr(filtering_expr)
+
         self.params = OrderedDict()
         self.params['data_colno'] = data_colno
         self.params['filtering_colno'] = filtering_colno
         self.params['filtering_expr'] = filtering_expr
         self._fill_params()
+
+    def _validate_filtering_expr(self, filtering_expr):
+        assert isinstance(filtering_expr, dict)
+        assert filtering_expr['op'] in ('eq', 'contains')
+        assert filtering_expr['args']
+        for arg in filtering_expr['args']:
+            assert isinstance(arg, basestring)
 
     def _fill_params(self):
         # This one is used for selecting data
