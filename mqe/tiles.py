@@ -285,7 +285,6 @@ class Tile(Row):
         return (self.dashboard_id, self.tile_id)
 
 
-
 def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id):
     """Delete and detach tiles from a dashboard which don't have data for
     at least the specified time period.
@@ -321,15 +320,13 @@ def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id
 
     master_repl = {}
     for master_tile in master_tiles:
-        tpcreated_ids = tpcreator.select_tpcreated_tile_ids(master_tile, layout_id)
-        if tpcreated_ids:
-            new_master_base = Tile.select(master_tile.dashboard_id, tpcreated_ids[0])
-            if not new_master_base:
-                log.warn('Could not select master tile replacement')
-                continue
-            new_master = tpcreator.make_master_from_tpcreated(master_tile, new_master_base)
-            master_repl[master_tile] = new_master
-            master_repl[new_master_base] = None
+        new_master_base = tpcreator.choose_new_master_candidate(master_tile)
+        if not new_master_base:
+            log.warn('Could not select master tile replacement')
+            continue
+        new_master = tpcreator.make_master_from_tpcreated(master_tile, new_master_base)
+        master_repl[master_tile] = new_master
+        master_repl[new_master_base] = None
 
     if master_repl:
         repl_res = layouts.replace_tiles(master_repl, layout_id)

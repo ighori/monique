@@ -524,10 +524,12 @@ class TilesModuleTest(unittest.TestCase):
 
         self.assertEqual(6, len(rd.layout().layout_dict))
         self.assertEqual(6, len(_select_tile_ids(rd.dashboard_id)))
-        ts = rd.layout().tile_dict.keys()
-        self.assertEqual(sorted([[], [u'p1:11'], [u'p1:12'], [u'p1:13'], [u'p2:21'], [u'p2:22']]), sorted([t.tags for t in ts]))
-        m1 = first(t for t in ts if t.tags and t.tags[0].startswith('p1') and t.is_master_tile())
-        m2 = first(t for t in ts if t.tags and t.tags[0].startswith('p2') and t.is_master_tile())
-        self.assertEqual(2, len(rd.layout().get_tpcreated_tile_ids(m1.tile_id)))
-        self.assertEqual(1, len(rd.layout().get_tpcreated_tile_ids(m2.tile_id)))
+        tile_list = rd.layout().tile_dict.keys()
+        self.assertEqual(sorted([[], ['p1:11'], ['p1:12'], ['p1:13'], ['p2:21'], ['p2:22']]), sorted([t.tags for t in tile_list]))
+        master1 = first(t for t in tile_list if t.tags and t.tags[0].startswith('p1') and t.is_master_tile())
+        master2 = first(t for t in tile_list if t.tags and t.tags[0].startswith('p2') and t.is_master_tile())
+        self.assertEqual(2, len(rd.layout().get_tpcreated_tile_ids(master1.tile_id)))
+        self.assertEqual(1, len(rd.layout().get_tpcreated_tile_ids(master2.tile_id)))
+        self.assertEqual(['p1:11'], master1.tags)
+        self.assertEqual(['p2:21'], master2.tags)
 

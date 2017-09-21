@@ -313,3 +313,22 @@ def synchronize_sizes_of_tpcreated(master_tile, for_layout_id):
     return layouts.apply_mods([synchronize_sizes_of_tpcreated_mod(master_tile)],
               master_tile.owner_id, master_tile.dashboard_id, for_layout_id)
 
+
+def choose_new_master_candidate(old_master):
+    """Choose a tpcreated tile that could be used as an ``old_master`` replacement.
+    The function selects a tile placed first in the group of tpcreated tiles
+    (that are sorted wrt. tag values - see :func:`.repack`). Return ``None``
+    if no tpcreated tiles exist."""
+    layout = layouts.Layout.select(old_master.owner_id, old_master.dashboard_id)
+    tpcreated_ids_tags = []
+    for tile_id in layout.get_tpcreated_tile_ids(old_master.tile_id):
+        props = layout.get_tile_props(tile_id)
+        if not props:
+            continue
+        tpcreated_ids_tags.append((tile_id, props.get('tags', [])))
+    if not tpcreated_ids_tags:
+        return None
+    tpcreated_ids_tags.sort(key=lambda (tile_id, tags): layouts.tags_sort_key(tags))
+    return Tile.select(old_master.dashboard_id, tpcreated_ids_tags[0][0])
+
+

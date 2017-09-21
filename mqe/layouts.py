@@ -256,7 +256,8 @@ def detach_tile(tile, for_layout_id=None):
 
 def repack(owner_id, dashboard_id, for_layout_id=None):
     """Compress the layout definition by removing free space present between tiles and
-    group tpcreated tiles. The operation preserves the order of regular tiles.
+    group tpcreated tiles. The operation preserves the order of regular tiles. The
+    tpcreated tiles are sorted by tag values.
 
     :param owner_id: the owner ID
     :param dashboard_id: the dashboard ID
