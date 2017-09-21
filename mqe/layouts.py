@@ -1,5 +1,7 @@
 import logging
 from copy import deepcopy
+import sys
+import re
 
 from mqe import util
 from mqe.util import try_complete, NotCompleted
@@ -652,26 +654,35 @@ def pack_leftwards_mod():
     return do_pack_leftwards
 
 
+_DEFAULT_TAGS_SORT_KEY = ((-sys.maxint,), ('',))
+_re_number = re.compile(r'\d+')
+
+def tags_sort_key(tags):
+    if not tags:
+        return _DEFAULT_TAGS_SORT_KEY
+
+    # the list of ints found within the "property value" of the tags
+    num_keys = []
+    # the list of strings found within whole tags, with numbers deleted
+    str_keys = []
+    for tag in tags:
+        if ':' in tag:
+            val_part = tag.split(':')[1]
+            num_match = _re_number.search(val_part)
+            if num_match:
+                num_keys.append(int(num_match.group(0)))
+                str_keys.append(_re_number.sub('', tag))
+            else:
+                str_keys.append(tag)
+    if not num_keys:
+        num_keys.append(-sys.maxint)
+    if not str_keys:
+        str_keys.append('')
+    return (tuple(num_keys), tuple(str_keys))
+
+
 def repack_mod():
     """A mod compressing and re-sorting the layout. See :func:`repack`."""
-
-    DEFAULT_RICH_KEY = (-9999999, '')
-
-    def _tags_to_rich_key(tags):
-        if not tags:
-            return DEFAULT_RICH_KEY
-
-        num_key = DEFAULT_RICH_KEY[0]
-        for tag in tags:
-            if ':' in tag:
-                val_part = tag.split(':')[1]
-                try:
-                    num_key = float(val_part)
-                except ValueError:
-                    pass
-                else:
-                    break
-        return (num_key, ','.join(tags))
 
     def do_repack(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
@@ -679,15 +690,15 @@ def repack_mod():
         by_tile_id = layout_mod.layout.layout_props['by_tile_id']
 
         def key((tile_id, vo)):
-            """Returns (group_pos, (within_group_num_key, within_group_str_key))"""
+            """Returns (master_pos, (num_keys_tuple, str_keys_tuple))"""
             props = layout_mod.layout.get_tile_props(tile_id)
             master_id = props.get('master_id') if props else None
             if not master_id:
-                return (tile_id_to_index[tile_id], DEFAULT_RICH_KEY)
+                return (tile_id_to_index[tile_id], _DEFAULT_TAGS_SORT_KEY)
             if master_id not in tile_id_to_index:
-                #log.warn('No group leader in layout_dict')
-                return (tile_id_to_index[tile_id], DEFAULT_RICH_KEY)
-            return (tile_id_to_index[master_id], _tags_to_rich_key(props.get('tags', [])))
+                #log.warn('No master in layout_dict')
+                return (tile_id_to_index[tile_id], _DEFAULT_TAGS_SORT_KEY)
+            return (tile_id_to_index[master_id], tags_sort_key(props.get('tags', [])))
 
         layout_dict_items.sort(key=key)
 
