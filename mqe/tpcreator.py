@@ -81,13 +81,27 @@ def tags_matching_tpcreator_spec(tpcreator_spec, tags):
 
     return res
 
-def select_tpcreated_tile_ids(master_tile, for_layout_id=None):
+def select_tpcreated_tile_ids(master_tile, for_layout_id=None, sort=False):
     """Return a list of tile IDs created from the master tile, possibly for the given
-    layout version."""
+    layout version. If ``sort`` is ``True``, sort the IDs wrt. their visual position
+    in a repacked layout (see :func:`.repack`)."""
     layout = layouts.Layout.select(master_tile.owner_id, master_tile.dashboard_id)
     if for_layout_id and layout.layout_id != for_layout_id:
         return None
-    return layout.get_tpcreated_tile_ids(master_tile.tile_id)
+    tile_ids = layout.get_tpcreated_tile_ids(master_tile.tile_id)
+    if not sort:
+        return tile_ids
+
+    tpcreated_ids_tags = []
+    for tile_id in layout.get_tpcreated_tile_ids(master_tile.tile_id):
+        props = layout.get_tile_props(tile_id)
+        if not props:
+            continue
+        tpcreated_ids_tags.append((tile_id, props.get('tags', [])))
+    if not tpcreated_ids_tags:
+        return None
+    tpcreated_ids_tags.sort(key=lambda (tile_id, tags): layouts.tags_sort_key(tags))
+    return [tile_id for tile_id, tags in tpcreated_ids_tags]
 
 
 def _tpcreator_prefix(tag):
@@ -312,23 +326,5 @@ def synchronize_sizes_of_tpcreated(master_tile, for_layout_id):
     """
     return layouts.apply_mods([synchronize_sizes_of_tpcreated_mod(master_tile)],
               master_tile.owner_id, master_tile.dashboard_id, for_layout_id)
-
-
-def choose_new_master_candidate(old_master):
-    """Choose a tpcreated tile that could be used as an ``old_master`` replacement.
-    The function selects a tile placed first in the group of tpcreated tiles
-    (that are sorted wrt. tag values - see :func:`.repack`). Return ``None``
-    if no tpcreated tiles exist."""
-    layout = layouts.Layout.select(old_master.owner_id, old_master.dashboard_id)
-    tpcreated_ids_tags = []
-    for tile_id in layout.get_tpcreated_tile_ids(old_master.tile_id):
-        props = layout.get_tile_props(tile_id)
-        if not props:
-            continue
-        tpcreated_ids_tags.append((tile_id, props.get('tags', [])))
-    if not tpcreated_ids_tags:
-        return None
-    tpcreated_ids_tags.sort(key=lambda (tile_id, tags): layouts.tags_sort_key(tags))
-    return Tile.select(old_master.dashboard_id, tpcreated_ids_tags[0][0])
 
 

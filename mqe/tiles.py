@@ -320,7 +320,10 @@ def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id
 
     master_repl = {}
     for master_tile in master_tiles:
-        new_master_base = tpcreator.choose_new_master_candidate(master_tile)
+        tpcreated_tile_ids = tpcreator.select_tpcreated_tile_ids(master_tile, layout_id, sort=True)
+        if not tpcreated_tile_ids:
+            continue
+        new_master_base = Tile.select(master_tile.dashboard_id, tpcreated_tile_ids[0])
         if not new_master_base:
             log.warn('Could not select master tile replacement')
             continue
