@@ -98,7 +98,7 @@ def main():
     assert not new_chosen_master.is_master_tile()
 
     new_master = make_master_from_tpcreated(old_master, new_chosen_master)
-    res = replace_tiles({old_master: new_master}, for_layout_id=None)
+    res = replace_tiles({old_master: new_master, new_chosen_master: None}, for_layout_id=None)
     print 'replaced %d tiles' % len(res.tile_replacement)
 
     layout = Layout.select(owner_id, dashboard.dashboard_id)

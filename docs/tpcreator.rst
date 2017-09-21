@@ -147,13 +147,15 @@ The promotion of a new master can be a useful operation in other cases. It can b
     assert not new_chosen_master.is_master_tile()
 
     new_master = make_master_from_tpcreated(old_master, new_chosen_master)
-    replace_tiles({old_master: new_master}, for_layout_id=None)
+    replace_tiles({old_master: new_master, new_chosen_master: None}, for_layout_id=None)
 
     layout = Layout.select(owner_id, dashboard.dashboard_id)
     tile = [tile for tile in layout.tile_dict if tile.tags == ['ip:192.168.2.51']][0]
     print tile.is_master_tile()
 
     > True
+
+In the example the ``new_chosen_master`` is selected explicitly, by searching for a tile having the given tags. If a new master must be chosen automatically, the function :func:`.select_tpcreated_tile_ids` can be used to get a list of tpcreated tile IDs.
 
 
 Using multiple tags
