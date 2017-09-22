@@ -530,6 +530,9 @@ class TilesModuleTest(unittest.TestCase):
         master2 = first(t for t in tile_list if t.tags and t.tags[0].startswith('p2') and t.is_master_tile())
         self.assertEqual(2, len(rd.layout().get_tpcreated_tile_ids(master1.tile_id)))
         self.assertEqual(1, len(rd.layout().get_tpcreated_tile_ids(master2.tile_id)))
+
         self.assertEqual(['p1:11'], master1.tags)
         self.assertEqual(['p2:21'], master2.tags)
+
+        self.assertEqual('tile2', master1.tile_options['tile_title'])
 

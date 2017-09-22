@@ -290,6 +290,10 @@ def make_master_from_tpcreated(old_master, tpcreated):
     new_master_tile_options['tpcreator_uispec'] = old_master.tile_options['tpcreator_uispec']
     del new_master_tile_options['tpcreator_data']
 
+    if old_master.tile_options.get('tile_title') and not \
+            new_master_tile_options.get('tile_title'):
+        new_master_tile_options['tile_title'] = old_master.tile_options['tile_title']
+
     return Tile.insert_with_tile_options(old_master.dashboard_id, new_master_tile_options)
 
 
