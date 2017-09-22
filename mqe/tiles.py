@@ -285,7 +285,8 @@ class Tile(Row):
         return (self.dashboard_id, self.tile_id)
 
 
-def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id):
+def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id,
+                              optimize_check=False):
     """Delete and detach tiles from a dashboard which don't have data for
     at least the specified time period.
 
@@ -293,16 +294,20 @@ def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id
     :param int max_seconds_without_data: the maximal age (specified in seconds) of the tile's
         data to avoid the expiration
     :param ~uuid.UUID for_layout_id: the version of the layout to perform the expiration
+    :param bool optimize_check: whether to allow an optimization: checking only the latest
+        report instance ID of a tile's report instead of full :data:`tile_data`. This will
+        not work correctly when a tile's series are not present in the latest instance.
     :return: ``layout_id`` of the new layout if the operation was successful, ``None``
         otherwise
     """
     from mqe import layouts
     from mqe import tpcreator
 
+    min_valid = datetime.datetime.utcnow() - datetime.timedelta(seconds=max_seconds_without_data)
     regular_tiles = [t for t in tile_list if not t.is_master_tile() \
-                     and _should_expire_tile(t, max_seconds_without_data)]
+                     and _should_expire_tile(t, min_valid, optimize_check)]
     master_tiles = [t for t in tile_list if t.is_master_tile() \
-                    and _should_expire_tile(t, max_seconds_without_data)]
+                    and _should_expire_tile(t, min_valid, optimize_check)]
 
     log.info('Will try to expire %s regular and %s master tiles out of %s passed',
              len(regular_tiles), len(master_tiles), len(tile_list))
@@ -344,15 +349,19 @@ def expire_tiles_without_data(tile_list, max_seconds_without_data, for_layout_id
     return layout_id
 
 
-def _should_expire_tile(tile, max_seconds_without_data):
-    tile_data = tile.tilewidget.get_tile_data(limit=1)
-    last_points = [sd['data_points'][-1] for sd in tile_data['series_data'] if sd['data_points']]
-    if not last_points:
-        max_dt = util.datetime_from_uuid1(tile.tile_id)
+def _should_expire_tile(tile, min_valid, optimize_check):
+    max_dt = None
+    if optimize_check:
+        latest_report_instance_id = tile.report.fetch_latest_instance_id(tile.tags)
+        if latest_report_instance_id:
+            max_dt = util.datetime_from_uuid1(latest_report_instance_id)
     else:
-        max_dt = max(p.dt for p in last_points)
-    min_valid = datetime.datetime.utcnow() - datetime.timedelta(seconds=max_seconds_without_data)
-    if max_dt >= min_valid:
-        return False
-    return True
+        tile_data = tile.tilewidget.get_tile_data()
+        last_points = [sd['data_points'][-1] for sd in tile_data['series_data'] if sd['data_points']]
+        if last_points:
+            max_dt = max(p.dt for p in last_points)
+    if max_dt is None:
+        # if there's no data, use the tile's creation datetime
+        max_dt = util.datetime_from_uuid1(tile.tile_id)
+    return max_dt < min_valid
 

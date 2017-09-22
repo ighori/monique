@@ -343,6 +343,47 @@ class TilesModuleTest(unittest.TestCase):
 
 
     def test_expire_tiles_without_data(self):
+        rd1 = new_report_data('points')
+        rd2 = new_report_data('points')
+
+        tile_config_1 = {
+            'tw_type': 'Range',
+            'series_spec_list': [
+                dataseries.SeriesSpec(2, 0, dict(op='eq', args=['monique'])),
+            ],
+            'tile_options': {
+                'seconds_back': 86400,
+            }
+        }
+        tile1 = tiles.Tile.insert(rd1.owner_id, rd1.report.report_id, rd1.dashboard_id, tile_config_1)
+        place_tile(tile1)
+        self.assertTrue(tile1.get_tile_data()['series_data'][0]['data_points'])
+
+        tile_config_2 = {
+            'tw_type': 'Range',
+            'series_spec_list': [
+                dataseries.SeriesSpec(2, 0, dict(op='eq', args=['john20'])),
+            ],
+            'tile_options': {
+                'seconds_back': 86400,
+            }
+        }
+        tile2 = tiles.Tile.insert(rd2.owner_id, rd2.report.report_id, rd2.dashboard_id, tile_config_2)
+        place_tile(tile2)
+        self.assertFalse(tile2.get_tile_data()['series_data'][0]['data_points'])
+        res = tiles.expire_tiles_without_data([tile1, tile2], 3600, Layout.select(rd1.owner_id, rd1.dashboard_id).layout_id, optimize_check=True)
+        self.assertIsNone(res)
+
+        time.sleep(0.5)
+        rd2.report.process_input('0')
+
+        res = tiles.expire_tiles_without_data([tile1, tile2], 0.5, Layout.select(rd1.owner_id, rd1.dashboard_id).layout_id, optimize_check=True)
+        self.assertTrue(res)
+        self.assertFalse(Tile.select(rd1.dashboard_id, tile1.tile_id))
+        self.assertTrue(Tile.select(rd2.dashboard_id, tile2.tile_id))
+
+
+    def test_expire_tiles_without_data_optimize_check(self):
         owner_id = report_data('points').report.owner_id
         report_id = report_data('points').report.report_id
         dashboard_id = report_data('points').dashboard_id
