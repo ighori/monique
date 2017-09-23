@@ -2,7 +2,6 @@ import logging
 
 from mqe import mqeconfig
 from mqe import util
-from mqe.util import try_complete, NotCompleted
 from mqe import tiles
 from mqe import c
 from mqe.signals import fire_signal, layout_modified
@@ -20,86 +19,74 @@ def handle_sscreator(owner_id, report_id, report_instance):
     possibly creating new series definitions for tiles and altering dashboards'
     layouts. The signal :attr:`~mqe.signals.layout_modified` is issued for each
     modification."""
-    rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, report_id, [], 'sscs',
+    layout_rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, report_id, [], 'sscs',
                                             mqeconfig.MAX_DASHBOARDS_WITH_SSCS_PER_REPORT)
-    if not rows:
+    if not layout_rows:
         log.debug('No layout_by_report sscs rows')
         return
 
     log.info('sscreator is processing %s rows for owner_id=%s report_id=%s report_instance_id=%s',
-             len(rows), owner_id, report_id, report_instance.report_instance_id)
-    for row in rows:
-        try:
-            try_complete(MAX_SSCS_TRIES,
-                         lambda: handle_sscreator_row(row, report_instance),
-                         lambda try_no: log.warn('sscreator failed attempt %s/%s', try_no, MAX_SSCS_TRIES))
-        except NotCompleted:
-            log.warn('sscreator failure %s', row)
-        else:
-            log.info('sscreator finished successfully')
+             len(layout_rows), owner_id, report_id, report_instance.report_instance_id)
+    for row in layout_rows:
+        mods = [sscreator_mod(report_instance, row)]
+        lmr = layouts.apply_mods(mods, owner_id, row['dashboard_id'], for_layout_id=None,
+                                 max_tries=MAX_SSCS_TRIES)
+        if lmr and lmr.new_layout.layout_id != lmr.old_layout.layout_id:
+            fire_signal(layout_modified, reason='sscreator', layout_modification_result=lmr)
 
 
-def handle_sscreator_row(row, report_instance):
-    log.debug('Processing row %s', row)
+def sscreator_mod(report_instance, layout_row):
+    """A layout mod that implements sscreator."""
 
-    layout = layouts.Layout.select(row['owner_id'], row['dashboard_id'])
-    if not layout:
-        log.warn('No layout')
-        return True
+    def do_sscreator_mod(layout_mod):
+        tile_ids = []
+        any_sscs_found = False
+        for tile_id, props in layout_mod.layout.layout_props['by_tile_id'].items():
+            if not props.get('sscs'):
+                continue
+            if props['report_id'] != report_instance.report_id:
+                continue
+            any_sscs_found = True
+            if not set(props['tags']).issubset(set(report_instance.all_tags)):
+                continue
+            tile_ids.append(tile_id)
 
-    tile_ids = []
-    any_sscs_found = False
-    for tile_id, props in layout.layout_props['by_tile_id'].items():
-        if not props.get('sscs'):
-            continue
-        if props['report_id'] != row['report_id']:
-            continue
-        any_sscs_found = True
-        if not set(props['tags']).issubset(set(report_instance.all_tags)):
-            continue
-        tile_ids.append(tile_id)
+        if not any_sscs_found:
+            log.info('Deleting obsoleted layout_by_report sscs row')
+            c.dao.LayoutDAO.delete_layout_by_report(layout_mod.layout.owner_id,
+                report_instance.report_id, layout_row['tags'], layout_row['label'],
+                layout_row['dashboard_id'], layout_row['layout_id'])
+            return
 
-    if not any_sscs_found:
-        log.info('Deleting obsoleted layout_by_report sscs row')
-        c.dao.LayoutDAO.delete_layout_by_report(row['owner_id'], row['report_id'], row['tags'],
-                                row['label'], row['dashboard_id'], row['layout_id'])
-        return True
+        if not tile_ids:
+            log.debug('No tiles to process')
+            return
 
-    if not tile_ids:
-        log.debug('No tiles to process')
-        return True
+        # the sorting is only for the predictability of processing
+        tile_ids.sort(key=lambda ud: ud.time)
 
-    # this sorting is only for the predictability of processing
-    tile_ids.sort(key=lambda ud: ud.time)
+        tile_list = tiles.Tile.select_multi(layout_mod.layout.dashboard_id, tile_ids).values()
+        ss_tile_replacement = {}
+        for tile in tile_list:
+            new_tile = create_new_series(tile, report_instance)
+            if not new_tile:
+                continue
+            ss_tile_replacement[tile] = new_tile
 
-    tile_list = tiles.Tile.select_multi(row['dashboard_id'], tile_ids).values()
-    tile_replacement = {}
-    for tile in tile_list:
-        new_tile = create_new_series(tile, report_instance)
-        if not new_tile:
-            continue
-        tile_replacement[tile] = new_tile
+        if not ss_tile_replacement:
+            return
 
-    if not tile_replacement:
-        return True
+        log.debug('Replacing %s tiles with new series', len(ss_tile_replacement))
+        layouts.replace_tiles_mod(ss_tile_replacement, sync_tpcreated=False)(layout_mod)
 
-    log.debug('Replacing %s tiles with new series', len(tile_replacement))
-    repl_res = layouts.replace_tiles(tile_replacement, layout.layout_id,
-                                     sync_tpcreated=False)
-    if not repl_res:
-        log.debug('Replacing the tiles failed')
-        return False
-
-    fire_signal(layout_modified, reason='sscreator', layout_modification_result=repl_res)
-
-    return True
+    return do_sscreator_mod
 
 
 def create_new_series(tile, report_instance):
     """Create new series based on :data:`tile_config.sscs` present in the ``tile`` and the
     rows present in the ``report_instance``. The function returns a new |Tile| if new
     series were created, ``None`` otherwise."""
-    log.debug('Creating new series for %s %s', tile, report_instance)
+    log.debug('Searching for new series for %s %s', tile, report_instance)
     sscs_def = tile.tile_options.get('sscs')
     if not sscs_def:
         log.warn('No sscs in tile_options')

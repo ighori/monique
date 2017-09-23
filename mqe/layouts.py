@@ -407,13 +407,14 @@ class LayoutModification(object):
             return LayoutModificationResult(self)
 
         def warn_about_failure(try_no):
-            log.warn('Layout modification failed attempt %s/%s', try_no, max_tries)
+            log.warn('Layout modification failed attempt %s/%s', try_no + 1, max_tries)
 
         log.info('Layout modification attempt using mods %s and up to %s tries',
                  [f.__name__ for f in self.modifications], max_tries)
         try:
             lmr = try_complete(max_tries, do_apply, after_fail=warn_about_failure)
-            log.info('Layout modification successful, result is None: %s', lmr is None)
+            log.info('Layout modification successful, new layout set: %s',
+                     lmr.old_layout.layout_id != lmr.new_layout.layout_id)
             return lmr
         except LayoutModificationFailed:
             log.warn('Layout modification failure: mod raised LayoutModificationImpossible')
