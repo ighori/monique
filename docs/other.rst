@@ -86,6 +86,12 @@ A custom class can support the serialization by using the :func:`.json_type` dec
 The argument to the :func:`.json_type` decorator defines the value put under the ``__type__`` key. The method ``for_json`` must return a dictionary defining other attributes put in the serialized object. Deserialization is implemented using a static method ``from_rawjson``, which receives a dictionary returned previously by ``for_json`` and based on it should return the class' instance.
 
 
+Logging
+-------
+
+The library uses the standard :mod:`logging` module to output messages. The root logger is named ``mqe``. Setting the logging level to ``INFO`` will result in only important messages to be outputted, while ``DEBUG`` will increase the verbosity.
+
+
 DAO interface
 -------------
 

@@ -412,9 +412,11 @@ def import_module_var(var_path):
     module = sys.modules.get(module_path) or importlib.import_module(module_path)
     return getattr(module, var_path)
 
-def setup_logging(level_name, debug_queries=None, stream=sys.stdout,
+def setup_logging(level_name='INFO', debug_queries=None, stream=sys.stdout,
                   format='%(asctime)s %(levelname)s %(message)s',
-                  loggers=['mqe', 'mqeweb', 'mqeapi']):
+                  loggers=['mqe', 'mqeweb', 'mqeapi', 'mqetables']):
+    """Setup logging to a stream for the given loggers. The call ``setup_logging()``
+    will configure logging to stdout with level INFO for the library's loggers."""
     if debug_queries is not None:
         from mqe import mqeconfig
         mqeconfig.DEBUG_QUERIES = debug_queries
