@@ -94,7 +94,7 @@ Sample value::
 
    .. attribute:: tile_options.tile_title
 
-      A tile title. The library uses it for :ref:`guide_tpcreator`.
+      A tile title. The library uses it for :ref:`guide_tpcreator`. The postfix of the title can contain tag names in the format described for :data:`~tile_data.generated_tile_title_postfix` - it will be stripped when necessary (e.g. when auto-creating a new tile).
 
 
 
@@ -225,7 +225,7 @@ Sample value::
 
     .. attribute:: tile_data.generated_tile_title_postfix
 
-    The postfix of the suggested chart title composed of tag names.
+    The postfix of the suggested chart title composed of tag names, enclosed between the characters ``[`` and ``]``.
 
     .. attribute:: tile_data.extra_options
 

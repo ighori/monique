@@ -286,15 +286,25 @@ def make_master_from_tpcreated(old_master, tpcreated):
     assert old_master.is_master_tile()
     assert not tpcreated.is_master_tile()
 
-    new_master_tile_options = copy.deepcopy(tpcreated.tile_options)
-    new_master_tile_options['tpcreator_uispec'] = old_master.tile_options['tpcreator_uispec']
-    del new_master_tile_options['tpcreator_data']
+    new_master_to = copy.deepcopy(tpcreated.tile_options)
+    new_master_to['tpcreator_uispec'] = old_master.tile_options['tpcreator_uispec']
+    del new_master_to['tpcreator_data']
 
-    if old_master.tile_options.get('tile_title') and not \
-            new_master_tile_options.get('tile_title'):
-        new_master_tile_options['tile_title'] = old_master.tile_options['tile_title']
+    if new_master_to.get('tile_title'):
+        postfix = tpcreated.tilewidget.generate_tile_title_postfix()
+        if postfix and postfix in new_master_to['tile_title']:
+            new_master_to['tile_title'].replace(postfix, '').strip()
 
-    return Tile.insert_with_tile_options(old_master.dashboard_id, new_master_tile_options)
+    old_master_title = old_master.tile_options.get('tile_title')
+    if old_master_title and not new_master_to.get('tile_title'):
+        # strip old postfix
+        old_postfix = old_master.tilewidget.generate_tile_title_postfix()
+        if old_postfix in old_master_title:
+            new_postfix = tpcreated.tilewidget.generate_tile_title_postfix()
+            old_master_title = old_master_title.replace(old_postfix, new_postfix)
+        new_master_to['tile_title'] = old_master_title
+
+    return Tile.insert_with_tile_options(old_master.dashboard_id, new_master_to)
 
 
 def synchronize_sizes_of_tpcreated_mod(master_tile):

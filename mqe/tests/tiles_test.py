@@ -524,7 +524,7 @@ class TilesModuleTest(unittest.TestCase):
             ],
             'tile_options': {
                 'seconds_back': 1000,
-                'tile_title': 'tile2',
+                'tile_title': 'tile2 [p1:10]',
                 'tpcreator_uispec': tpcreator.suggested_tpcreator_uispec(['p1:10']),
             }
         }
@@ -575,5 +575,6 @@ class TilesModuleTest(unittest.TestCase):
         self.assertEqual(['p1:11'], master1.tags)
         self.assertEqual(['p2:21'], master2.tags)
 
-        self.assertEqual('tile2', master1.tile_options['tile_title'])
+        self.assertEqual('tile2 [p1:11]', master1.tile_options['tile_title'])
+        self.assertEqual('tile3', master2.tile_options['tile_title'])
 
