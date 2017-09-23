@@ -6,7 +6,6 @@ from mqe import tiles
 from mqe.tiles import Tile
 from mqe import c
 from mqe import util
-from mqe.util import try_complete, NotCompleted
 from mqe import mqeconfig
 from mqe.signals import fire_signal, layout_modified
 from mqe import layouts
@@ -136,7 +135,7 @@ def tpcreator_mod(report_instance, layout_row, max_tpcreated=mqeconfig.MAX_TPCRE
 
     def do_tpcreator_mod(layout_mod):
         tpcreator_spec_by_master_id, tpcreated_tags_by_master_id = _get_tpcreator_data(
-            layout_mod.layout, report_instance.report_id)
+            layout_mod, report_instance.report_id)
         log.debug('tpcreator data: %s, %s', tpcreator_spec_by_master_id, tpcreated_tags_by_master_id)
 
         if not tpcreator_spec_by_master_id:
@@ -181,11 +180,11 @@ def tpcreator_mod(report_instance, layout_row, max_tpcreated=mqeconfig.MAX_TPCRE
 
 
 
-def _get_tpcreator_data(layout_data, report_id):
+def _get_tpcreator_data(layout_mod, report_id):
     tpcreator_spec_by_master_id = {}
     tpcreated_tags_by_master_id = defaultdict(set)
 
-    for tile_id, props in layout_data.layout_props['by_tile_id'].items():
+    for tile_id, props in layout_mod.layout.layout_props['by_tile_id'].items():
         if props['report_id'] != report_id:
             continue
         if props.get('is_master'):
@@ -196,6 +195,11 @@ def _get_tpcreator_data(layout_data, report_id):
         if not master_id:
             continue
         tpcreated_tags_by_master_id[master_id].add(tuple(sorted(props['tags'])))
+
+    for tile in layout_mod.new_tiles:
+        master_id = tile.get_master_tile_id()
+        if master_id and master_id in tpcreated_tags_by_master_id:
+            tpcreated_tags_by_master_id[master_id].add(tuple(sorted(tile.tags)))
 
     return tpcreator_spec_by_master_id, tpcreated_tags_by_master_id
 

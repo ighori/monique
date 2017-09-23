@@ -483,3 +483,41 @@ class TPCreatorTest(unittest.TestCase):
         layout = Layout.select(owner_id, dashboard_id_3)
         self.assertEqual(2, len(layout.layout_dict))
         self.assertIn(['p1:12', 'p2:11'], [t.tags for t in layout.tile_dict])
+
+    def test_tpcreator_as_mod(self):
+        owner_id = uuid.uuid4()
+        dashboard_id = uuid.uuid4()
+
+        tile_config = {
+            'tags': ['p1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'p1:10', 'prefix': 'p1:'}],
+            }
+        }
+        r = reports.Report.insert(owner_id, 'r')
+        master_tile = Tile.insert(owner_id, r.report_id, dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+        ri1 = r.process_input('0', tags=['p1:11'],
+                              handle_tpcreator=False).report_instance
+        ri2 = r.process_input('0', tags=['p1:12'],
+                              handle_tpcreator=False).report_instance
+        ri3 = r.process_input('0', tags=['p1:12'],
+                              handle_tpcreator=False).report_instance
+        layout_rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, r.report_id,
+                                [], 'tpcreator', 100)
+        mods = [tpcreator.tpcreator_mod(ri1, layout_rows[0]),
+                tpcreator.tpcreator_mod(ri2, layout_rows[0]),
+                tpcreator.tpcreator_mod(ri3, layout_rows[0])]
+        layouts.apply_mods(mods, owner_id, dashboard_id, None)
+
+        layout = Layout.select(owner_id, dashboard_id)
+        self.assertEqual(3, len(layout.layout_dict))
+        self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']], sorted(tile.tags for tile in layout.tile_dict))
+
+
+
+
+
