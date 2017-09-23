@@ -352,7 +352,7 @@ class TPCreatorTest(unittest.TestCase):
         layout_2 = Layout.select(master_tile_1.owner_id, dashboard_id_2)
         layout_3 = Layout.select(master_tile_1.owner_id, dashboard_id_3)
 
-        self.assertEqual(7, len(layout_1.layout_dict))
+        self.assertEqual(8, len(layout_1.layout_dict))
         self.assertEqual(2, len(layout_2.layout_dict))
         self.assertEqual(2, len(layout_3.layout_dict))
 
@@ -371,7 +371,7 @@ class TPCreatorTest(unittest.TestCase):
         layout_2 = Layout.select(master_tile_1.owner_id, dashboard_id_2)
         layout_3 = Layout.select(master_tile_1.owner_id, dashboard_id_3)
 
-        self.assertEqual(9, len(layout_1.layout_dict))
+        self.assertEqual(10, len(layout_1.layout_dict))
         self.assertEqual(3, len(layout_2.layout_dict))
         self.assertEqual(3, len(layout_3.layout_dict))
 

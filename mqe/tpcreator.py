@@ -116,82 +116,69 @@ def handle_tpcreator(owner_id, report_id, report_instance):
     possibly creating new tiles from a master tile and altering dashboards'
     layouts. The signal :attr:`~mqe.signals.layout_modified` is issued for each
     modification."""
-    rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, report_id, [], 'tpcreator',
+    layout_rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, report_id, [], 'tpcreator',
                                                          mqeconfig.MAX_TPCREATORS_PER_REPORT)
-    if not rows:
+    if not layout_rows:
         log.debug('No layout_by_report tpcreator rows')
         return
 
     log.info('tpcreator is processing %s rows for owner_id=%s report_id=%s report_instance_id=%s',
-             len(rows), owner_id, report_id, report_instance.report_instance_id)
-    for row in rows:
-        try:
-            try_complete(MAX_TPCREATE_TRIES,
-                         lambda: handle_tpcreator_row(row, report_instance),
-                         lambda try_no: log.warn('tpcreator failed attempt %s/%s',
-                                                 try_no, MAX_TPCREATE_TRIES))
-        except NotCompleted:
-            log.warn('tpcreator failure %s', row)
-        else:
-            log.info('tpcreator finished successfully')
+             len(layout_rows), owner_id, report_id, report_instance.report_instance_id)
+    for row in layout_rows:
+        mods = [tpcreator_mod(report_instance, row)]
+        lmr = layouts.apply_mods(mods, owner_id, row['dashboard_id'], for_layout_id=None,
+                                 max_tries=MAX_TPCREATE_TRIES)
+        if lmr and lmr.new_layout.layout_id != lmr.old_layout.layout_id:
+            fire_signal(layout_modified, reason='tpcreator', layout_modification_result=lmr)
 
 
-def handle_tpcreator_row(row, report_instance):
-    log.debug('Processing row %s', row)
+def tpcreator_mod(report_instance, layout_row, max_tpcreated=mqeconfig.MAX_TPCREATED):
 
-    layout = layouts.Layout.select(row['owner_id'], row['dashboard_id'])
-    if not layout:
-        log.warn('No layout')
-        return True
+    def do_tpcreator_mod(layout_mod):
+        tpcreator_spec_by_master_id, tpcreated_tags_by_master_id = _get_tpcreator_data(
+            layout_mod.layout, report_instance.report_id)
+        log.debug('tpcreator data: %s, %s', tpcreator_spec_by_master_id, tpcreated_tags_by_master_id)
 
-    layout_id = layout.layout_id
+        if not tpcreator_spec_by_master_id:
+            log.info('Deleting obsoleted layout_by_report tpcreator row')
+            c.dao.LayoutDAO.delete_layout_by_report(layout_row['owner_id'],
+                layout_row['report_id'], layout_row['tags'], layout_row['label'],
+                layout_row['dashboard_id'], layout_row['layout_id'])
+            return
 
-    tpcreator_spec_by_master_id, tpcreated_tags_by_master_id = _get_tpcreator_data(layout, row['report_id'])
-    log.debug('tpcreator data: %s, %s', tpcreator_spec_by_master_id, tpcreated_tags_by_master_id)
+        for master_id, tpcreator_spec in tpcreator_spec_by_master_id.items():
+            log.debug('Processing master_id=%s tpcreator_spec=%s', master_id, tpcreator_spec)
+            tpcreated_tags = tpcreated_tags_by_master_id[master_id]
+            if len(tpcreated_tags) >= max_tpcreated:
+                log.warn('Too many tpcreated for master_id=%s: %s', master_id, tpcreated_tags)
+                continue
 
-    if not tpcreator_spec_by_master_id:
-        log.info('Deleting obsoleted layout_by_report tpcreator row')
-        c.dao.LayoutDAO.delete_layout_by_report(row['owner_id'], row['report_id'], row['tags'],
-                                                row['label'], row['dashboard_id'], row['layout_id'])
-        return True
+            matching_tags = tags_matching_tpcreator_spec(tpcreator_spec,
+                                                         report_instance.all_tags)
+            if not matching_tags:
+                log.debug('No tags match the tpcreator_spec')
+                continue
+            if tuple(matching_tags) in tpcreated_tags:
+                log.debug('A tpcreated tile already exists for the matched tags %s',
+                          matching_tags)
+                continue
 
-    for master_id, tpcreator_spec in tpcreator_spec_by_master_id.items():
-        log.debug('Processing master_id=%s tpcreator_spec=%s', master_id, tpcreator_spec)
-        tpcreated_tags = tpcreated_tags_by_master_id[master_id]
-        if len(tpcreated_tags) >= mqeconfig.MAX_TPCREATED:
-            log.warn('Too many tpcreated for master_id=%s', master_id)
-            continue
+            master_tile = Tile.select(layout_row['dashboard_id'], master_id)
+            if not master_tile:
+                log.warn('No master_tile')
+                continue
 
-        matching_tags = tags_matching_tpcreator_spec(tpcreator_spec, report_instance.all_tags)
-        if not matching_tags:
-            log.debug('No tags match the tpcreator_spec')
-            continue
-        if tuple(matching_tags) in tpcreated_tags:
-            log.debug('A tpcreated tile already exists for the matched tags %s', matching_tags)
-            continue
+            new_tile_options = _tile_options_of_tpcreated(master_tile, tpcreator_spec, matching_tags)
+            new_tile = Tile.insert_with_tile_options(master_tile.dashboard_id, new_tile_options)
+            log.info('tpcreator created new tile with tags %s for report_id=%s', matching_tags,
+                     layout_row['report_id'])
+            layouts.place_tile_mod(new_tile, size_of=master_tile.tile_id)(layout_mod)
 
-        master_tile = Tile.select(row['dashboard_id'], master_id)
-        if not master_tile:
-            log.warn('No master_tile')
-            continue
+        if layout_mod.new_tiles:
+            layouts.repack_mod()(layout_mod)
 
-        new_tile_options = _tile_options_of_tpcreated(master_tile, tpcreator_spec, matching_tags)
-        new_tile = Tile.insert_with_tile_options(master_tile.dashboard_id, new_tile_options)
-        log.info('tpcreator created new tile with tags %s for report_id=%s', matching_tags,
-                 row['report_id'])
-        mres = layouts.place_tile(new_tile, size_of=master_tile.tile_id,
-                                  for_layout_id=layout_id)
-        if not mres:
-            log.debug('Placing new tile failed')
-            return False
+    return do_tpcreator_mod
 
-        fire_signal(layout_modified,
-                    reason='tpcreator',
-                    layout_modification_result=mres)
-
-        layout_id = mres.new_layout.layout_id
-
-    return True
 
 
 def _get_tpcreator_data(layout_data, report_id):
