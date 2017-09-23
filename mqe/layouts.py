@@ -359,6 +359,10 @@ class LayoutModification(object):
         Tile.delete_multi(self.new_tiles.keys())
         Tile.delete_multi(self.tile_replacement.values())
 
+        self.tile_replacement.clear()
+        self.new_tiles.clear()
+        self.detached_tiles[:] = []
+
     def any_changes_made(self):
         return self.tile_replacement or self.new_tiles or self.detached_tiles or \
             self.old_layout.layout_dict != self.layout.layout_dict
