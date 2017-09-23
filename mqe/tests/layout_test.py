@@ -237,3 +237,52 @@ class LayoutModuleTest(unittest.TestCase):
         tile_other2 = tiles[0].insert_similar(tiles[0].get_tile_config())
         res = layouts.replace_tiles({tile_other: tile_other2}, None)
         self.assertIsNone(res)
+
+    def test_layout_mod_nop_many_tries(self):
+        def nop(layout_mod):
+            return
+        tiles = call(TilePlacingDetachingTest.test_place_multiple)
+        orig_layout = layouts.Layout.select(tiles[0].owner_id, tiles[0].dashboard_id)
+        lmr = layouts.apply_mods([nop], tiles[0].owner_id, tiles[0].dashboard_id, None)
+        self.assertTrue(lmr)
+        self.assertEqual(orig_layout.layout_dict, lmr.old_layout.layout_dict)
+        self.assertEqual(orig_layout.layout_dict, lmr.new_layout.layout_dict)
+        self.assertEqual(orig_layout.layout_id, lmr.old_layout.layout_id)
+        self.assertEqual(orig_layout.layout_id, lmr.new_layout.layout_id)
+
+    def test_layout_mod_nop_single_try(self):
+        def nop(layout_mod):
+            return
+        tiles = call(TilePlacingDetachingTest.test_place_multiple)
+        orig_layout = layouts.Layout.select(tiles[0].owner_id, tiles[0].dashboard_id)
+        lmr = layouts.apply_mods([nop], tiles[0].owner_id, tiles[0].dashboard_id, orig_layout.layout_id)
+        self.assertTrue(lmr)
+        self.assertEqual(orig_layout.layout_dict, lmr.old_layout.layout_dict)
+        self.assertEqual(orig_layout.layout_dict, lmr.new_layout.layout_dict)
+        self.assertEqual(orig_layout.layout_id, lmr.old_layout.layout_id)
+        self.assertEqual(orig_layout.layout_id, lmr.new_layout.layout_id)
+
+    def test_layout_mod_modify_vo_many_tries(self):
+        def modify_vo(layout_mod):
+            layout_mod.layout.layout_dict.items()[0][1]['x'] = 100
+        tiles = call(TilePlacingDetachingTest.test_place_multiple)
+        orig_layout = layouts.Layout.select(tiles[0].owner_id, tiles[0].dashboard_id)
+        lmr = layouts.apply_mods([modify_vo], tiles[0].owner_id, tiles[0].dashboard_id, None)
+        self.assertTrue(lmr)
+        self.assertEqual(orig_layout.layout_dict, lmr.old_layout.layout_dict)
+        self.assertNotEqual(orig_layout.layout_dict, lmr.new_layout.layout_dict)
+        self.assertEqual(orig_layout.layout_id, lmr.old_layout.layout_id)
+        self.assertNotEqual(orig_layout.layout_id, lmr.new_layout.layout_id)
+
+    def test_layout_mod_modify_vo_single_try(self):
+        def modify_vo(layout_mod):
+            layout_mod.layout.layout_dict.items()[0][1]['x'] = 100
+        tiles = call(TilePlacingDetachingTest.test_place_multiple)
+        orig_layout = layouts.Layout.select(tiles[0].owner_id, tiles[0].dashboard_id)
+        lmr = layouts.apply_mods([modify_vo], tiles[0].owner_id, tiles[0].dashboard_id, orig_layout.layout_id)
+        self.assertTrue(lmr)
+        self.assertEqual(orig_layout.layout_dict, lmr.old_layout.layout_dict)
+        self.assertNotEqual(orig_layout.layout_dict, lmr.new_layout.layout_dict)
+        self.assertEqual(orig_layout.layout_id, lmr.old_layout.layout_id)
+        self.assertNotEqual(orig_layout.layout_id, lmr.new_layout.layout_id)
+

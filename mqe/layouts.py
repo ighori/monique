@@ -206,7 +206,7 @@ class Layout(object):
         res.owner_id = self.owner_id
         res.dashboard_id = self.dashboard_id
         res.layout_id = self.layout_id
-        res.layout_dict = self.layout_dict.copy()
+        res.layout_dict = {tile_id: vo.copy() for tile_id, vo in self.layout_dict.items()}
         res.layout_props = self.layout_props.copy()
         res._included_tiles = self._included_tiles.copy()
         return res
@@ -359,6 +359,10 @@ class LayoutModification(object):
         Tile.delete_multi(self.new_tiles.keys())
         Tile.delete_multi(self.tile_replacement.values())
 
+    def any_changes_made(self):
+        return self.tile_replacement or self.new_tiles or self.detached_tiles or \
+            self.old_layout.layout_dict != self.layout.layout_dict
+
     def apply(self, owner_id, dashboard_id, for_layout_id, max_tries=MAX_LAYOUT_MODIFICATION_TRIES):
         if for_layout_id is not None:
             self.old_layout = Layout.select(owner_id, dashboard_id)
@@ -373,14 +377,14 @@ class LayoutModification(object):
                 self._on_failure()
                 return None
 
-            new_layout_id = self.layout.set(owner_id, dashboard_id, for_layout_id)
-            if new_layout_id:
-                self.new_layout = self.layout
-                self._on_success()
-                return LayoutModificationResult(self)
-            else:
-                self._on_failure()
-                return None
+            if self.any_changes_made():
+                new_layout_id = self.layout.set(owner_id, dashboard_id, for_layout_id)
+                if not new_layout_id:
+                    self._on_failure()
+                    return None
+            self.new_layout = self.layout
+            self._on_success()
+            return LayoutModificationResult(self)
 
         def do_apply():
             self.old_layout = Layout.select(owner_id, dashboard_id)
@@ -393,10 +397,11 @@ class LayoutModification(object):
                 self._on_failure()
                 raise LayoutModificationFailed()
 
-            new_layout_id = self.layout.set(owner_id, dashboard_id, self.layout.layout_id)
-            if not new_layout_id:
-                self._on_failure()
-                return None
+            if self.any_changes_made():
+                new_layout_id = self.layout.set(owner_id, dashboard_id, self.layout.layout_id)
+                if not new_layout_id:
+                    self._on_failure()
+                    return None
             self.new_layout = self.layout
             self._on_success()
             return LayoutModificationResult(self)
