@@ -336,6 +336,7 @@ class LayoutModification(object):
         self.new_layout = None
 
         self.modifications = list(modifications)
+
     def add_modification(self, f):
         self.modifications.append(f)
 
@@ -400,11 +401,20 @@ class LayoutModification(object):
             self._on_success()
             return LayoutModificationResult(self)
 
+        def warn_about_failure(try_no):
+            log.warn('Layout modification failed attempt %s/%s', try_no, max_tries)
+
+        log.info('Layout modification attempt using mods %s and up to %s tries',
+                 [f.__name__ for f in self.modifications], max_tries)
         try:
-            return try_complete(max_tries, do_apply)
+            lmr = try_complete(max_tries, do_apply, after_fail=warn_about_failure)
+            log.info('Layout modification successful, result is None: %s', lmr is None)
+            return lmr
         except LayoutModificationFailed:
+            log.warn('Layout modification failure: mod raised LayoutModificationImpossible')
             return None
         except NotCompleted:
+            log.warn('Layout modification failure: all tries failed')
             return None
 
 
