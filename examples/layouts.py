@@ -77,7 +77,7 @@ def main():
 
     from mqe.layouts import LayoutModificationImpossible
 
-    def detach_last_tile_mod():
+    def detach_top_tiles_mod():
 
         def do(layout_mod):
             tile_ids = [tile_id for tile_id, visual_options in layout_mod.layout.layout_dict.items()
@@ -90,11 +90,24 @@ def main():
 
         return do
 
-    res = apply_mods([detach_last_tile_mod()], owner_id, dashboard.dashboard_id, None)
+    res = apply_mods([detach_top_tiles_mod()], owner_id, dashboard.dashboard_id, None)
     if not res:
         raise ValueError('Operation failed')
     else:
         print res
+
+
+    def detach_top_tiles_using_replacement_mod():
+
+        def do(layout_mod):
+            tiles = [tile for tile, visual_options in layout_mod.layout.tile_dict.items()
+                     if visual_options['y'] == 0]
+            if not tiles:
+                raise LayoutModificationImpossible()
+            replace_tiles_mod({tile: None for tile in tiles})(layout_mod)
+
+        return do
+
 
 
 

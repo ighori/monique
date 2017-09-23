@@ -204,7 +204,7 @@ class SeriesSpec(object):
         and computing the default series name. The headers are taken from the table of the
         ``report_instance`` and are put into ``params['data_column_header']`` and
         ``params[ 'filtering_column_header']``, which replace ``params['data_colno']``
-         and ``params['filtering_colno']``.
+        and ``params['filtering_colno']``.
 
         :param report_instance: a report instance from which to take column headers
         :type report_instance: :class:`~mqe.reports.ReportInstance`

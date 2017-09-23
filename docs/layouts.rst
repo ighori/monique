@@ -110,13 +110,13 @@ Other functions returning mods are: :func:`.pack_upwards_mod`, :func:`.pack_left
 Writing a layout mod
 ^^^^^^^^^^^^^^^^^^^^
 
-A layout mod is a function that receives a :class:`.LayoutModification` object. The function should modify the ``layout.layout_dict`` attribute of the object and express the modification by putting the modified tiles into :attr:`~.LayoutModification.tile_replacement`, :attr:`~.LayoutModification.new_tiles` and :attr:`~.LayoutModification.detached_tiles` attributes of the object. A mod function can also raise the exception :exc:`.LayoutModificationImpossible` which signals that the operation cannot be performed.
+A layout mod is a function that receives a :class:`.LayoutModification` object. The function should modify or replace the ``layout.layout_dict`` attribute of the object and express the modification by putting the modified tiles into :attr:`~.LayoutModification.tile_replacement`, :attr:`~.LayoutModification.new_tiles` and :attr:`~.LayoutModification.detached_tiles` attributes of the object. A mod function can also raise the exception :exc:`.LayoutModificationImpossible` which signals that the operation cannot be performed.
 
 For example, here's a mod that deletes tiles placed in the first row of a layout::
 
     from mqe.layouts import LayoutModificationImpossible
 
-    def detach_last_tile_mod():
+    def detach_top_tiles_mod():
 
         def do(layout_mod):
             tile_ids = [tile_id for tile_id, visual_options in layout_mod.layout.layout_dict.items()
@@ -129,13 +129,31 @@ For example, here's a mod that deletes tiles placed in the first row of a layout
 
         return do
 
-    res = apply_mods([detach_last_tile_mod()], owner_id, dashboard.dashboard_id, None)
+    res = apply_mods([detach_top_tiles_mod()], owner_id, dashboard.dashboard_id, None)
     if not res:
         raise ValueError('Operation failed')
     else:
         print res
 
-The thing to notice is that we have created the inner function ``do()`` and returned it as a result of the ``detach_last_tile_mod()``. The real layout mod function is the ``do()`` function and we could define it as a normal outer function, but the example fulfills the convention of having a function named ``*_mod`` that returns a layout function. That design allows adding parameters to the ``*_mod`` function without breaking the API.
+The thing to notice is that we have created the inner function ``do()`` and returned it as a result of the ``detach_top_tiles_mod()``. The real layout mod function is the ``do()`` function and we could define it as a normal outer function, but the example fulfills the convention of having a function named ``*_mod`` that returns a layout function. That design allows adding parameters to the ``*_mod`` function without breaking the API.
+
+Layout mods can call other layout mods. The ``detach_top_tiles_mod()`` function could use the :func:`.replace_tiles_mod` function to do its job:
+
+.. code-block:: python
+    :emphasize-lines: 8
+
+    def detach_top_tiles_using_replacement_mod():
+
+        def do(layout_mod):
+            tiles = [tile for tile, visual_options in layout_mod.layout.tile_dict.items()
+                     if visual_options['y'] == 0]
+            if not tiles:
+                raise LayoutModificationImpossible()
+            replace_tiles_mod({tile: None for tile in tiles})(layout_mod)
+
+        return do
+
+
 
 
 Deleting unneeded tiles
