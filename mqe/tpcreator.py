@@ -124,7 +124,8 @@ def handle_tpcreator(owner_id, report_id, report_instance):
     log.info('tpcreator is processing %s rows for owner_id=%s report_id=%s report_instance_id=%s',
              len(layout_rows), owner_id, report_id, report_instance.report_instance_id)
     for row in layout_rows:
-        mods = [tpcreator_mod(report_instance, row)]
+        mods = [tpcreator_mod(report_instance, row),
+                layouts.repack_mod(True)]
         lmr = layouts.apply_mods(mods, owner_id, row['dashboard_id'], for_layout_id=None,
                                  max_tries=MAX_TPCREATE_TRIES)
         if lmr and lmr.new_layout.layout_id != lmr.old_layout.layout_id:
@@ -172,9 +173,6 @@ def tpcreator_mod(report_instance, layout_row, max_tpcreated=mqeconfig.MAX_TPCRE
             log.info('tpcreator created new tile with tags %s for report_id=%s', matching_tags,
                      layout_row['report_id'])
             layouts.place_tile_mod(new_tile, size_of=master_tile.tile_id)(layout_mod)
-
-        if layout_mod.new_tiles:
-            layouts.repack_mod()(layout_mod)
 
     return do_tpcreator_mod
 

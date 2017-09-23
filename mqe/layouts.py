@@ -702,10 +702,17 @@ def tags_sort_key(tags):
     return (tuple(num_keys), tuple(str_keys))
 
 
-def repack_mod():
-    """A mod compressing and re-sorting the layout. See :func:`repack`."""
+def repack_mod(only_if_new_tiles_present=False):
+    """A mod compressing and re-sorting the layout. See :func:`repack`.
+
+    :param bool only_if_new_tiles_present: perform the repacking only if new tiles
+        were placed in the layout.
+    """
 
     def do_repack(layout_mod):
+        if only_if_new_tiles_present and not layout_mod.new_tiles:
+            return
+
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
         tile_id_to_index = {item[0]: i for i, item in enumerate(layout_dict_items)}
         by_tile_id = layout_mod.layout.layout_props['by_tile_id']
