@@ -401,7 +401,7 @@ class LayoutModification(object):
             return LayoutModificationResult(self)
 
         try:
-            return try_complete(MAX_LAYOUT_MODIFICATION_TRIES, do_apply)
+            return try_complete(max_tries, do_apply)
         except LayoutModificationFailed:
             return None
         except NotCompleted:
