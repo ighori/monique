@@ -9,6 +9,7 @@ from mqe.tiles import Tile
 from mqe.reports import Report
 from mqe import layouts
 from mqe.layouts import Layout
+from mqe import sscreator
 
 from mqe.tests.tutil import new_report_data, patch
 
@@ -233,5 +234,39 @@ class SSCSTest(unittest.TestCase):
         rows = c.dao.LayoutDAO.select_layout_by_report_multi(tile.owner_id,
                                                              tile.report_id, [], 'sscs', 100)
         self.assertFalse(rows)
+
+    def test_sscreator_as_mod(self):
+        owner_id = uuid.uuid4()
+        dashboard_id = uuid.uuid4()
+
+        tile_config = {
+            'series_spec_list': [
+                SeriesSpec(1, 0, dict(op='eq', args=['label1'])),
+            ],
+            'tile_options': {
+                'sscs': SeriesSpec(1, 0, dict(op='eq', args=['label1']))
+            }
+        }
+        r = Report.insert(owner_id, 'r')
+        tile = Tile.insert(owner_id, r.report_id, dashboard_id, tile_config)
+        layouts.place_tile(tile)
+        ri1 = r.process_input('label1 1',
+                              handle_sscreator=False).report_instance
+        ri2 = r.process_input('label11 11\nlabel12 12',
+                              handle_sscreator=False).report_instance
+        ri3 = r.process_input('label21 21\nlabel22 22',
+                              handle_sscreator=False).report_instance
+        layout_rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, r.report_id,
+                                                                    [], 'sscs', 100)
+        mods = [sscreator.sscreator_mod(ri1, layout_rows[0]),
+                sscreator.sscreator_mod(ri2, layout_rows[0]),
+                sscreator.sscreator_mod(ri3, layout_rows[0])]
+        layouts.apply_mods(mods, owner_id, dashboard_id, None)
+
+        layout = Layout.select(owner_id, dashboard_id)
+        tile = layout.tile_dict.keys()[0]
+
+        # this fails - see issue #5
+        #self.assertEqual(5, len(tile.series_specs()))
 
 
