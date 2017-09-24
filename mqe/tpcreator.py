@@ -125,7 +125,8 @@ def handle_tpcreator(owner_id, report_id, report_instance):
              len(layout_rows), owner_id, report_id, report_instance.report_instance_id)
     for row in layout_rows:
         mods = [tpcreator_mod(report_instance, row),
-                layouts.repack_mod(True)]
+                layouts.if_mod(lambda layout_mod: layout_mod.new_tiles,
+                               layouts.repack_mod())]
         lmr = layouts.apply_mods(mods, owner_id, row['dashboard_id'], for_layout_id=None,
                                  max_tries=MAX_TPCREATE_TRIES)
         if lmr and lmr.new_layout.layout_id != lmr.old_layout.layout_id:
