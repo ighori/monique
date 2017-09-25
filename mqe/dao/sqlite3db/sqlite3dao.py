@@ -551,6 +551,13 @@ class Sqlite3SeriesDefDAO(SeriesDefDAO):
                            WHERE report_id=? AND tags IN {in_p}""".format(in_p=in_params(tags_powerset)),
                         [report_id] + tags_powerset)
 
+            rows = cur.execute("""SELECT series_id FROM series_def
+                                  WHERE report_id=? AND tags IN {in_p}""".format(
+                                        in_p=in_params(tags_powerset)),
+                               [report_id] + tags_powerset)
+            for row in rows:
+                cur.execute("""DELETE FROM series_value WHERE series_id=?""", [row['series_id']])
+
 
 class Sqlite3SeriesValueDAO(SeriesValueDAO):
 

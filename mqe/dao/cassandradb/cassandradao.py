@@ -594,6 +594,8 @@ class CassSeriesDefDAO(SeriesDefDAO):
                 qs.append(bind("""UPDATE mqe.series_def SET from_rid=NULL, to_rid=NULL
                                   WHERE report_id=? AND tags_repr=? AND series_id=?""",
                                [report_id, row['tags_repr'], row['series_id']]))
+            qs.append(bind("""DELETE FROM mqe.series_value WHERE series_id=?""",
+                           [row['series_id']]))
         c.cass.execute_parallel(qs)
 
 

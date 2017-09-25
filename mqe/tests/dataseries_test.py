@@ -12,7 +12,7 @@ from mqe import dataseries
 from mqe.dataseries import guess_series_spec
 from mqe.util import dictwithout, MIN_UUID
 
-from mqe.tests.tutil import report_data, CustomData, call
+from mqe.tests.tutil import report_data, CustomData, call, enable_logging
 from mqe.tests import tiles_test
 
 utcnow = datetime.datetime.utcnow
@@ -395,6 +395,33 @@ class GetSeriesValuesTest(unittest.TestCase):
         values = dataseries.get_series_values(sd, r, datetime.datetime(2017, 5, 5, 0, 0, 0, 1),
                                                      datetime.datetime(2017, 5, 5, 0, 0, 0, 1))
         self.assertEqual(0, len(values))
+
+    def test_clear_series_defs_after_series_def_filling(self):
+        owner_id = uuid.uuid1()
+        r = reports.Report.insert(owner_id, 'rname')
+
+        sd_id = dataseries.SeriesDef.select_id_or_insert(r.report_id, [],
+                                                         dataseries.SeriesSpec(0, -1, {'op': 'eq', 'args': ['0']}))
+        sd = dataseries.SeriesDef.select(r.report_id, [], sd_id)
+
+        r.process_input('1')
+        r.process_input('2')
+
+        values = dataseries.get_series_values(sd, r, utcnow() - timedelta(days=1), utcnow())
+        self.assertEqual(2, len(values))
+
+        r.delete_single_instance(r.fetch_instances()[0].report_instance_id)
+        dataseries.clear_series_defs(r.report_id, [[]])
+
+        inst = r.fetch_instances()
+        self.assertEqual(1, len(inst))
+        self.assertEqual('2', inst[0].input_string)
+
+        enable_logging(True, True)
+        sd = dataseries.SeriesDef.select(r.report_id, [], sd_id)
+        values = dataseries.get_series_values(sd, r, utcnow() - timedelta(days=1), utcnow())
+        self.assertEqual(1, len(values))
+        self.assertEqual(2, values[0].value)
 
 
 class DefaultOptionsTest(unittest.TestCase):
