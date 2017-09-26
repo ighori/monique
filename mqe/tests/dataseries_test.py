@@ -411,7 +411,6 @@ class GetSeriesValuesTest(unittest.TestCase):
         self.assertEqual(2, len(values))
 
         r.delete_single_instance(r.fetch_instances()[0].report_instance_id)
-        dataseries.clear_series_defs(r.report_id, [[]])
 
         inst = r.fetch_instances()
         self.assertEqual(1, len(inst))
@@ -422,6 +421,7 @@ class GetSeriesValuesTest(unittest.TestCase):
         values = dataseries.get_series_values(sd, r, utcnow() - timedelta(days=1), utcnow())
         self.assertEqual(1, len(values))
         self.assertEqual(2, values[0].value)
+
 
 
 class DefaultOptionsTest(unittest.TestCase):

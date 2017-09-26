@@ -327,8 +327,16 @@ class Report(Row):
         return c.dao.ReportDAO.select_report_instance_diskspace(self.owner_id, self.report_id)
 
     def delete_single_instance(self, report_instance_id):
-        """Delete the given report instance"""
-        return c.dao.ReportInstanceDAO.delete(self.owner_id, self.report_id, report_instance_id)
+        """Delete the given report instance and return a :class:`bool` telling if the
+        operation was successful."""
+        from mqe import dataseries
+
+        report_instance = self.fetch_single_instance(report_instance_id)
+        if not report_instance:
+            return False
+        res = c.dao.ReportInstanceDAO.delete(self.owner_id, self.report_id, report_instance_id)
+        dataseries.clear_series_defs(self.report_id, util.powerset(report_instance.all_tags))
+        return res
 
     def fetch_days(self, tags=None):
         """Fetch a list of days on which report instances with the specified tags were created as :class:`~datetime.datetime` objects"""
