@@ -396,7 +396,7 @@ class GetSeriesValuesTest(unittest.TestCase):
                                                      datetime.datetime(2017, 5, 5, 0, 0, 0, 1))
         self.assertEqual(0, len(values))
 
-    def test_clear_series_defs_after_series_def_filling(self):
+    def test_series_values_after_report_instance_deletion(self):
         owner_id = uuid.uuid1()
         r = reports.Report.insert(owner_id, 'rname')
 
@@ -422,6 +422,30 @@ class GetSeriesValuesTest(unittest.TestCase):
         self.assertEqual(1, len(values))
         self.assertEqual(2, values[0].value)
 
+    def test_series_values_after_report_instance_deletion_multiple_days(self):
+        owner_id = uuid.uuid1()
+        r = reports.Report.insert(owner_id, 'rname')
+
+        sd_id = dataseries.SeriesDef.select_id_or_insert(r.report_id, [],
+                                                         dataseries.SeriesSpec(0, -1, {'op': 'eq', 'args': ['0']}))
+        sd = dataseries.SeriesDef.select(r.report_id, [], sd_id)
+
+        r.process_input('1', created=utcnow()-timedelta(days=10))
+        r.process_input('2', created=utcnow()-timedelta(days=5))
+
+        values = dataseries.get_series_values(sd, r, utcnow() - timedelta(days=11), utcnow())
+        self.assertEqual(2, len(values))
+
+        r.delete_single_instance(r.fetch_instances()[1].report_instance_id)
+
+        inst = r.fetch_instances()
+        self.assertEqual(1, len(inst))
+        self.assertEqual('1', inst[0].input_string)
+
+        sd = dataseries.SeriesDef.select(r.report_id, [], sd_id)
+        values = dataseries.get_series_values(sd, r, utcnow() - timedelta(days=11), utcnow())
+        self.assertEqual(1, len(values))
+        self.assertEqual(1, values[0].value)
 
 
 class DefaultOptionsTest(unittest.TestCase):

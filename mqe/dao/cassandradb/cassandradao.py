@@ -396,10 +396,13 @@ class CassReportInstanceDAO(ReportInstanceDAO):
         ri = self.select(report_id, report_instance_id, None)
         if not ri:
             return False
-        
+
+
         diskspace = self._compute_ri_diskspace(ri)
 
         qs = []
+
+
         qs.append(bind("""DELETE FROM mqe.report_instance_metadata
                           WHERE report_id=? AND day=? AND report_instance_id=?""",
                        [report_id, ri['day'], report_instance_id]))
@@ -418,6 +421,23 @@ class CassReportInstanceDAO(ReportInstanceDAO):
         qs.append(bind("""UPDATE mqe.report_instance_diskspace_for_owner SET bytes=bytes-?
                           WHERE owner_id=?""",
                        [diskspace, owner_id]))
+
+        # check if day should be deleted - if it's the only instance for the day
+        days_qs = {}
+        for tags_subset in util.powerset(ri['all_tags']):
+            days_qs[tuple(tags_subset)] = bind("""SELECT report_instance_id FROM mqe.report_instance
+                                                  WHERE report_id=? AND day=? AND tags_repr=?
+                                                  LIMIT 2""",
+                                               [report_id, ri['day'], tags_repr_from_tags(tags_subset)])
+        days_res = c.cass.execute_parallel(days_qs)
+        for tags_subset_tuple, rows in days_res.iteritems():
+            if len(rows) != 1:
+                continue
+            if rows[0]['report_instance_id'] != report_instance_id:
+                continue
+            qs.append(bind("""DELETE FROM mqe.report_instance_day
+                              WHERE report_id=? AND tags_repr=? AND day=?""",
+                           [report_id, tags_repr_from_tags(list(tags_subset_tuple)), ri['day']]))
 
         # Can't delete from mqe.report_tag - tag might be used by other report instances
         #for tag in ri.all_tags:

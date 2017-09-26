@@ -284,6 +284,37 @@ class ReportTest(unittest.TestCase):
         self.assertEqual('-1 0 1 3 4 5 6 7'.split(), [ri['input_string'] for ri in r.fetch_instances()])
         self.assertEqual(len(all_ris) - 1, r.report_instance_count())
 
+    def test_delete_single_instance_multiple_days(self):
+        r, all_ris = self.create_multi_day_report()
+
+        r.delete_single_instance(all_ris[-1].report_instance_id)
+
+        latest_instance_id = r.fetch_latest_instance_id()
+        self.assertTrue(latest_instance_id)
+        ri = r.fetch_single_instance(latest_instance_id)
+        self.assertEqual('6', ri.input_string)
+
+        latest_instance_id = r.fetch_latest_instance_id(['t1'])
+        self.assertTrue(latest_instance_id)
+        ri = r.fetch_single_instance(latest_instance_id)
+        self.assertEqual('5', ri.input_string)
+
+        latest_instance_id = r.fetch_latest_instance_id(['t2'])
+        self.assertTrue(latest_instance_id)
+        ri = r.fetch_single_instance(latest_instance_id)
+        self.assertEqual('6', ri.input_string)
+
+
+        r2 = Report.insert(r.owner_id, 'r2')
+        r2.process_input('1', created=utcnow()-datetime.timedelta(days=5, seconds=2))
+        r2.process_input('2', created=utcnow()-datetime.timedelta(days=5, seconds=1))
+        latest_instance_id = r2.fetch_latest_instance_id()
+        r2.delete_single_instance(latest_instance_id)
+        latest_instance_id = r2.fetch_latest_instance_id()
+        ri = r2.fetch_single_instance(latest_instance_id)
+        self.assertEqual('1', ri.input_string)
+
+
     def test_fetch_days(self):
         r, all_ris = self.create_multi_day_report()
 
