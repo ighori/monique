@@ -320,6 +320,7 @@ class Report(Row):
                                                       if ri else sys.maxint)
 
     def report_instance_count(self):
+        """The number of report instances belonging to the report."""
         return c.dao.ReportDAO.select_report_instance_count(self.owner_id, self.report_id)
 
     def report_instance_diskspace(self):
