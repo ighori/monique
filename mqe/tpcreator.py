@@ -151,7 +151,7 @@ def tpcreator_mod(report_instance, layout_row, max_tpcreated=mqeconfig.MAX_TPCRE
             log.debug('Processing master_id=%s tpcreator_spec=%s', master_id, tpcreator_spec)
             tpcreated_tags = tpcreated_tags_by_master_id[master_id]
             if len(tpcreated_tags) >= max_tpcreated:
-                log.warn('Too many tpcreated for master_id=%s: %s', master_id, tpcreated_tags)
+                log.warn('Too many tpcreated for master_id=%s: %s', master_id, len(tpcreated_tags))
                 continue
 
             matching_tags = tags_matching_tpcreator_spec(tpcreator_spec,
