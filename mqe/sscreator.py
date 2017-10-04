@@ -112,7 +112,7 @@ def create_new_series(tile, report_instance):
     new_ss_list = []
     for s in string_vals:
         if s and s not in filtering_vals_set:
-            new_ss = sscs_def.copy(without_params=['name'])
+            new_ss = sscs_def.copy(without_params=['name', 'static_name'])
             new_ss.params['filtering_expr']['args'] = [s]
             new_ss_list.append(new_ss)
     if not new_ss_list:

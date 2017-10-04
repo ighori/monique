@@ -66,6 +66,38 @@ class SSCSTest(unittest.TestCase):
 
         return rd, tile
 
+
+    def test_sscs_override_static_name(self):
+        tile_config = {
+            'tags': ['ip:192.168.1.1'],
+            'tw_type': 'Range',
+            'series_spec_list': [
+                SeriesSpec(2, 0, dict(op='eq', args=['monique'])),
+                SeriesSpec(2, 0, dict(op='eq', args=['john'])),
+            ],
+            'tile_options': {
+                'seconds_back': 86400,
+                'tile_title': 'Points by user'
+            }
+        }
+        tile_config['series_spec_list'][0].params['static_name'] = 'monique_points'
+        self.assertEqual('monique_points', tile_config['series_spec_list'][0].name())
+        tile_config['tile_options']['sscs'] = tile_config['series_spec_list'][0]
+
+        rd = new_report_data('points')
+
+        tile = Tile.insert(rd.owner_id, rd.report.report_id, rd.dashboard_id, tile_config)
+        layouts.place_tile(tile)
+
+        d = [OrderedDict([('user_name', 'robert'), ('is_active', True), ('points', 128)]),
+             OrderedDict([('user_name', 'monique'), ('is_active', True), ('points', 210)])]
+        res = rd.report.process_input(json.dumps(d), tags=tile_config['tags'])
+        tile = rd.only_tile_from_layout()
+        self.assertEqual(3, len(tile.series_specs()))
+        expected_ss = SeriesSpec(2, 0, dict(op='eq', args=['robert']))
+        self.assertEqual('robert', expected_ss.name())
+        self.assertEqual('robert', tile.series_specs()[-1].name())
+
     def test_sscs_different_tag(self):
         rd, tile = self.test_sscs()
 
