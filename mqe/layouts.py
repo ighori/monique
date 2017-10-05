@@ -501,7 +501,7 @@ def place_tile_mod(tile, size_of=None, initial_visual_options=None):
         if not initial_visual_options:
             visual_options = {}
         else:
-            visual_options = deepcopy(initial_visual_options)
+            visual_options = initial_visual_options.copy()
 
         if size_of and layout_dict.get(size_of):
             visual_options['width'] = layout_dict.get(size_of).get('width',
@@ -634,8 +634,7 @@ def _sort_layout_items(layout_dict, by):
         key = lambda (ud, vo): (vo['x'], vo['y'])
     else:
         key = lambda (ud, vo): (vo['y'], vo['x'])
-    items = deepcopy(layout_dict.items())
-    return sorted(items, key=key)
+    return sorted(layout_dict.items(), key=key)
 
 def pack_upwards_mod():
     """A layout mod packing the layout upwards. It deletes vertical space existing
@@ -651,7 +650,6 @@ def pack_upwards_mod():
                 if _visual_options_intersect(vo, [vo2 for tile_id, vo2 in util.without_idx(layout_dict_items, i)]):
                     vo['y'] += 1
                     break
-        layout_mod.layout.layout_dict = dict(layout_dict_items)
 
     return do_pack_upwards
 
@@ -670,7 +668,6 @@ def pack_leftwards_mod():
                 if _visual_options_intersect(vo, [vo2 for ud, vo2 in util.without_idx(layout_dict_items, i)]):
                     vo['x'] += 1
                     break
-        layout_mod.layout.layout_dict = dict(layout_dict_items)
 
     return do_pack_leftwards
 
@@ -735,14 +732,14 @@ def repack_mod():
         res = {}
         start_x = 0
         start_y = 0
-        for (ud, vo) in layout_dict_items:
-            new_vo = deepcopy(vo)
+        for (tile_id, vo) in layout_dict_items:
+            new_vo = vo.copy()
             new_vo.pop('x', None)
             new_vo.pop('y', None)
 
             new_vo = _xy_visual_options_first_match(res, new_vo, start_x, start_y)
 
-            res[ud] = new_vo
+            res[tile_id] = new_vo
             start_x = new_vo['x']
             start_y = new_vo['y']
         layout_mod.layout.layout_dict = res
