@@ -675,31 +675,40 @@ def pack_leftwards_mod():
     return do_pack_leftwards
 
 
-_DEFAULT_TAGS_SORT_KEY = ((-sys.maxint,), ('',))
-_re_number = re.compile(r'\d+')
+class TagsSortKey(object):
+    re_number = re.compile(r'(\d+)')
 
-def tags_sort_key(tags):
-    if not tags:
-        return _DEFAULT_TAGS_SORT_KEY
+    def __init__(self, tags):
+        self.tokens = []
 
-    # the list of ints found within the "property value" of the tags
-    num_keys = []
-    # the list of strings found within whole tags, with numbers deleted
-    str_keys = []
-    for tag in tags:
-        if ':' in tag:
-            val_part = tag.split(':')[1]
-            num_match = _re_number.search(val_part)
-            if num_match:
-                num_keys.append(int(num_match.group(0)))
-                str_keys.append(_re_number.sub('', tag))
+        for tag in tags:
+            parts = self.re_number.split(tag)
+            for part in parts:
+                if not part:
+                    continue
+                if part.isdigit():
+                    self.tokens.append(int(part))
+                    continue
+                self.tokens.append(part)
+
+    def __cmp__(self, other):
+        if len(self.tokens) < len(other.tokens):
+            return -1
+        if len(self.tokens) > len(other.tokens):
+            return 1
+        for self_token, other_token in zip(self.tokens, other.tokens):
+            if (isinstance(self_token, int) and isinstance(other_token, int)) or \
+                    (isinstance(self_token, basestring) and isinstance(other_token, basestring)):
+                cmp_res = cmp(self_token, other_token)
+                if cmp_res != 0:
+                    return cmp_res
+            elif isinstance(self_token, int):
+                return 1
             else:
-                str_keys.append(tag)
-    if not num_keys:
-        num_keys.append(-sys.maxint)
-    if not str_keys:
-        str_keys.append('')
-    return (tuple(num_keys), tuple(str_keys))
+                return -1
+        return 0
+
+DEFAULT_TAGS_SORT_KEY = TagsSortKey([])
 
 
 def repack_mod():
@@ -709,18 +718,17 @@ def repack_mod():
     def do_repack(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
         tile_id_to_index = {item[0]: i for i, item in enumerate(layout_dict_items)}
-        by_tile_id = layout_mod.layout.layout_props['by_tile_id']
 
         def key((tile_id, vo)):
             """Returns (master_pos, (num_keys_tuple, str_keys_tuple))"""
             props = layout_mod.layout.get_tile_props(tile_id)
             master_id = props.get('master_id') if props else None
             if not master_id:
-                return (tile_id_to_index[tile_id], _DEFAULT_TAGS_SORT_KEY)
+                return (tile_id_to_index[tile_id], DEFAULT_TAGS_SORT_KEY)
             if master_id not in tile_id_to_index:
                 #log.warn('No master in layout_dict')
-                return (tile_id_to_index[tile_id], _DEFAULT_TAGS_SORT_KEY)
-            return (tile_id_to_index[master_id], tags_sort_key(props.get('tags', [])))
+                return (tile_id_to_index[tile_id], DEFAULT_TAGS_SORT_KEY)
+            return (tile_id_to_index[master_id], TagsSortKey(props.get('tags', [])))
 
         layout_dict_items.sort(key=key)
 

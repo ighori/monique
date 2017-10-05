@@ -99,7 +99,7 @@ def select_tpcreated_tile_ids(master_tile, for_layout_id=None, sort=False):
         tpcreated_ids_tags.append((tile_id, props.get('tags', [])))
     if not tpcreated_ids_tags:
         return None
-    tpcreated_ids_tags.sort(key=lambda (tile_id, tags): layouts.tags_sort_key(tags))
+    tpcreated_ids_tags.sort(key=lambda (tile_id, tags): layouts.TagsSortKey(tags))
     return [tile_id for tile_id, tags in tpcreated_ids_tags]
 
 

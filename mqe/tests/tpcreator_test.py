@@ -271,7 +271,6 @@ class TPCreatorTest(unittest.TestCase):
                                      {'tag': 'service1:search.1', 'prefix': 'service1:'}],
             }
         }
-        tile_config['tile_options']['tpcreator_uispec'] = tpcreator.suggested_tpcreator_uispec(tile_config['tags'])
         master_tile = Tile.insert(owner_id, rep.report_id, dashboard_id, tile_config)
         layouts.place_tile(master_tile)
 
@@ -284,6 +283,28 @@ class TPCreatorTest(unittest.TestCase):
         tags_lists = [tile.tags for tile in tiles]
         self.assertEqual([['server0:0', 'service1:search.1'], ['server0:0', 'service1:search.8'], ['server0:0', 'service1:search.9'], ['server0:0', 'service1:search.10'], ['server0:0', 'service1:search.11'], ['server0:0', 'service1:search.12']], tags_lists)
 
+    def test_layout_sorting_complex_tag_names_2(self):
+        owner_id = uuid.uuid4()
+        dashboard_id = uuid.uuid4()
+        rep = reports.Report.insert(owner_id, 'r')
+        tile_config = {
+            'tags': ['server:web.1'],
+            'series_spec_list': [dataseries.SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})],
+            'tile_options': {
+                'tpcreator_uispec': tpcreator.suggested_tpcreator_uispec(['server:web.1'])
+            }
+        }
+        master_tile = Tile.insert(owner_id, rep.report_id, dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+
+        rep.process_input('1', tags=['server:worker.1'])
+        rep.process_input('1', tags=['server:web.2'])
+
+        layout = layouts.Layout.select(owner_id, dashboard_id)
+        tiles = sorted(layout.tile_dict, key=lambda tile: (layout.tile_dict[tile]['y'],
+                                                           layout.tile_dict[tile]['x']))
+        tags_lists = [tile.tags for tile in tiles]
+        self.assertEqual([['server:web.1'], ['server:web.2'], ['server:worker.1']], tags_lists)
 
     def test_set_layout_fails(self):
         owner_id = uuid.uuid1()
