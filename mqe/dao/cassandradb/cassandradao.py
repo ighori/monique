@@ -391,65 +391,68 @@ class CassReportInstanceDAO(ReportInstanceDAO):
                                      ORDER BY report_instance_id DESC LIMIT 1""",
                  [report_id, latest_day, tags_repr_from_tags(tags)])['report_instance_id']
 
+    def delete_multi(self, owner_id, report_id, tags, ris):
+        qs = []
+        count_by_tags_repr = defaultdict(int)
+        diskspace_by_tags_repr = defaultdict(int)
+        tags_reprs_days = set()
+        for ri in ris:
+            qs.append(bind("""DELETE FROM mqe.report_instance_metadata
+                              WHERE report_id=? AND day=? AND report_instance_id=?""",
+                           [report_id, ri['day'], ri['report_instance_id']]))
+            for tags_subset in util.powerset(ri['all_tags']):
+                tags_repr = tags_repr_from_tags(tags_subset)
+                qs.append(bind("""DELETE FROM mqe.report_instance
+                                  WHERE report_id=? AND day=? AND tags_repr=?
+                                  AND report_instance_id=?""",
+                               [report_id, ri['day'], tags_repr, ri['report_instance_id']]))
+                count_by_tags_repr[tags_repr] += 1
+                diskspace_by_tags_repr[tags_repr] += self._compute_ri_diskspace(ri)
+                tags_reprs_days.add((tags_repr, ri['day']))
 
-    def delete(self, owner_id, report_id, report_instance_id):
-        ri = self.select(report_id, report_instance_id, None)
-        if not ri:
-            return False
+        qs.append(bind("""UPDATE mqe.report_instance_count_for_owner
+                          SET count=count-?
+                          WHERE owner_id=?""",
+                       [sum(count_by_tags_repr.values()), owner_id]))
+        qs.append(bind("""UPDATE mqe.report_instance_diskspace_for_owner
+                          SET bytes=bytes-?
+                          WHERE owner_id=?""",
+                       [sum(diskspace_by_tags_repr.values()), owner_id]))
 
+        for tags_repr, count in count_by_tags_repr.iteritems():
+            qs.append(bind("""UPDATE mqe.report_instance_count
+                              SET count=count-?
+                              WHERE report_id=? AND tags_repr=?""",
+                           [count, report_id, tags_repr]))
+        for tags_repr, bytes in diskspace_by_tags_repr.iteritems():
+            qs.append(bind("""UPDATE mqe.report_instance_diskspace
+                              SET bytes=bytes-?
+                              WHERE report_id=? AND tags_repr=?""",
+                           [bytes, report_id, tags_repr]))
 
-        diskspace = self._compute_ri_diskspace(ri)
+        c.cass.execute_parallel(qs)
+
+        ### Delete days for which report instances no longer exist
+
+        days_qs = {}
+        for tags_repr, day in tags_reprs_days:
+            days_qs[(tags_repr, day)] = bind("""SELECT report_instance_id FROM mqe.report_instance
+                                                WHERE report_id=? AND day=? AND tags_repr=?
+                                                LIMIT 1""",
+                                             [report_id, day, tags_repr])
+        days_res = c.cass.execute_parallel(days_qs)
 
         qs = []
-
-
-        qs.append(bind("""DELETE FROM mqe.report_instance_metadata
-                          WHERE report_id=? AND day=? AND report_instance_id=?""",
-                       [report_id, ri['day'], report_instance_id]))
-        for tags_subset in util.powerset(ri['all_tags']):
-            tags_repr = tags_repr_from_tags(tags_subset)
-            qs.append(bind("""DELETE FROM mqe.report_instance WHERE report_id=? AND day=? AND tags_repr=? AND report_instance_id=?""", [report_id, ri['day'], tags_repr, report_instance_id]))
-            qs.append(bind("""UPDATE mqe.report_instance_diskspace SET bytes=bytes-?
-                              WHERE report_id=? AND tags_repr=?""",
-                           [diskspace, report_id, tags_repr]))
-            qs.append(bind("""UPDATE mqe.report_instance_count SET count=count-1
-                              WHERE report_id=? AND tags_repr=?""",
-                           [report_id, tags_repr]))
-        qs.append(bind("""UPDATE mqe.report_instance_count_for_owner SET count=count-1
-                          WHERE owner_id=?""",
-                       [owner_id]))
-        qs.append(bind("""UPDATE mqe.report_instance_diskspace_for_owner SET bytes=bytes-?
-                          WHERE owner_id=?""",
-                       [diskspace, owner_id]))
-
-        # check if day should be deleted - if it's the only instance for the day
-        days_qs = {}
-        for tags_subset in util.powerset(ri['all_tags']):
-            days_qs[tuple(tags_subset)] = bind("""SELECT report_instance_id FROM mqe.report_instance
-                                                  WHERE report_id=? AND day=? AND tags_repr=?
-                                                  LIMIT 2""",
-                                               [report_id, ri['day'], tags_repr_from_tags(tags_subset)])
-        days_res = c.cass.execute_parallel(days_qs)
-        for tags_subset_tuple, rows in days_res.iteritems():
-            if len(rows) != 1:
-                continue
-            if rows[0]['report_instance_id'] != report_instance_id:
+        for (tags_repr, day), rows in days_res.iteritems():
+            if rows:
                 continue
             qs.append(bind("""DELETE FROM mqe.report_instance_day
                               WHERE report_id=? AND tags_repr=? AND day=?""",
-                           [report_id, tags_repr_from_tags(list(tags_subset_tuple)), ri['day']]))
-
-        # Can't delete from mqe.report_tag - tag might be used by other report instances
-        #for tag in ri.all_tags:
-        #    prefixes = list(util.iter_prefixes(tag, include_empty=True))
-        #    for p in prefixes:
-        #        qs.append(bind("""DELETE FROM mqe.report_tag
-        #                          WHERE report_id=? AND tag_prefix=? AND tag=?""",
-        #                       [report_id, p, tag]))
-
+                           [report_id, tags_repr, day]))
+        log.info('Deleting %s days', len(qs))
         c.cass.execute_parallel(qs)
-        
-        return True
+
+        return len(ris)
 
 
     def select_report_instance_count_for_owner(self, owner_id):

@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+import datetime
 
 from mqe import c
 from mqe import serialize
@@ -414,39 +415,56 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
             row = cur.fetchone()
             return row['report_instance_id'] if row else None
 
-    def delete(self, owner_id, report_id, report_instance_id):
-        ri = self.select(report_id, report_instance_id, None)
-        if not ri:
-            return False
-
-        diskspace = self._compute_ri_diskspace(ri)
-        tags_powerset = util.powerset(ri['all_tags'])
+    def delete_multi(self, owner_id, report_id, tags, ris):
+        qs = []
+        tags_days = set()
 
         with cursor() as cur:
-            cur.execute("""DELETE FROM report_instance WHERE report_id=?
-                           AND tags IN {in_p} AND report_instance_id=?""".format(in_p=in_params(tags_powerset)),
-                        [report_id] + tags_powerset + [report_instance_id])
+            for ri in ris:
+                tags_powerset = util.powerset(ri['all_tags'])
+                cur.execute("""DELETE FROM report_instance WHERE report_id=?
+                               AND tags IN {in_p} AND report_instance_id=?""".format(in_p=in_params(tags_powerset)),
+                            [report_id] + tags_powerset + [ri['report_instance_id']])
+                tags_days.add(
+                    (tuple(tags), util.datetime_from_uuid1(ri['report_instance_id']).date()))
 
-            # report counts
-
-            cur.execute("""UPDATE report SET
-                           report_instance_count = report_instance_count - 1
-                           WHERE report_id=?""", [report_id])
-            cur.execute("""UPDATE report SET
-                           report_instance_diskspace = report_instance_diskspace - ?
-                           WHERE report_id=?""", [diskspace, report_id])
-
-            # owner counts
-
+            total_diskspace = sum(self._compute_ri_diskspace(ri) for ri in ris)
+            cur.execute("""UPDATE report
+                           SET report_instance_count = report_instance_count - ?
+                           WHERE report_id=?""",
+                        [len(ris), report_id])
+            cur.execute("""UPDATE report
+                           SET report_instance_diskspace = report_instance_diskspace - ?
+                           WHERE report_id=?""",
+                        [total_diskspace, report_id])
             cur.execute("""UPDATE report_data_for_owner
-                           SET report_instance_count=report_instance_count-1
-                           WHERE owner_id=?""", [owner_id])
-            cur.execute("""UPDATE report_data_for_owner
-                           SET report_instance_diskspace=report_instance_diskspace-?
+                           SET report_instance_count=report_instance_count - ?
                            WHERE owner_id=?""",
-                        [diskspace, owner_id])
+                        [len(ris), owner_id])
+            cur.execute("""UPDATE report_data_for_owner
+                           SET report_instance_diskspace=report_instance_diskspace - ?
+                           WHERE owner_id=?""",
+                        [total_diskspace, owner_id])
 
-        return True
+            ### Delete days for which report instances no longer exist
+
+            for tags, day in tags_days:
+                cur.execute("""SELECT report_instance_id FROM report_instance
+                               WHERE report_id=? AND tags=? AND 
+                               report_instance_id > ? AND report_instance_id < ?
+                               LIMIT 1""",
+                            [report_id, list(tags),
+                             util.min_uuid_with_dt(datetime.datetime.combine(day,
+                                                            datetime.datetime.min.time())),
+                             util.max_uuid_with_dt(datetime.datetime.combine(day,
+                                                            datetime.datetime.max.time()))])
+                if cur.fetchall():
+                    cur.execute("""DELETE FROM report_instance_day
+                                   WHERE report_id=? AND tags=? AND day=?""",
+                                [report_id, list(tags), day])
+                
+
+            return len(ris)
 
 
     def select_report_instance_count_for_owner(self, owner_id):

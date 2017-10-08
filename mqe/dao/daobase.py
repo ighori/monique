@@ -116,8 +116,9 @@ class ReportInstanceDAO(BaseDAO):
         """Select the newest ``report_instance_id`` of a report_instance row having the ``tags_subset`` as a subset of ``all_tags``"""
         raise NotImplementedError()
 
-    def delete(self, owner_id, report_id, report_instance_id):
-        """Delete the report_instance row"""
+    def delete_multi(self, owner_id, report_id, tags_subset, rows):
+        """Delete report_instance rows ``rows``, which have the ``tags_subset``
+        as a subset of ``all_tags``."""
         raise NotImplementedError()
 
     def select_report_instance_count_for_owner(self, owner_id):

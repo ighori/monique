@@ -8,6 +8,7 @@ from mqe.reports import Report
 from mqetables.enrichment import EnrichedTable
 from mqetables.parsing import Table
 from mqe import util
+from mqe.tests.tutil import enable_logging
 
 utcnow = datetime.datetime.utcnow
 
@@ -280,6 +281,7 @@ class ReportTest(unittest.TestCase):
     def test_delete_single_instance(self):
         r, all_ris = self.create_multi_day_report()
 
+        enable_logging(True, True)
         r.delete_single_instance(all_ris[3].report_instance_id)
         self.assertEqual('-1 0 1 3 4 5 6 7'.split(), [ri['input_string'] for ri in r.fetch_instances()])
         self.assertEqual(len(all_ris) - 1, r.report_instance_count())
