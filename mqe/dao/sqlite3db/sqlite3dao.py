@@ -415,9 +415,15 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
             row = cur.fetchone()
             return row['report_instance_id'] if row else None
 
-    def delete_multi(self, owner_id, report_id, tags, ris):
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
+                     limit):
+        ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
+                                ['report_instance_id', 'all_tags', 'input_string'], 'asc', limit)
+        log.info('Selected %d report instances for deletion', len(ris))
+
         qs = []
         tags_days = set()
+        all_tags_subsets = set()
 
         with cursor() as cur:
             for ri in ris:
@@ -425,8 +431,10 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
                 cur.execute("""DELETE FROM report_instance WHERE report_id=?
                                AND tags IN {in_p} AND report_instance_id=?""".format(in_p=in_params(tags_powerset)),
                             [report_id] + tags_powerset + [ri['report_instance_id']])
-                tags_days.add(
-                    (tuple(tags), util.datetime_from_uuid1(ri['report_instance_id']).date()))
+                day = util.datetime_from_uuid1(ri['report_instance_id']).date()
+                for tags_subset in tags_powerset:
+                    tags_days.add((tuple(tags_subset), day))
+                    all_tags_subsets.add(tuple(tags_subset))
 
             total_diskspace = sum(self._compute_ri_diskspace(ri) for ri in ris)
             cur.execute("""UPDATE report
@@ -458,13 +466,12 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
                                                             datetime.datetime.min.time())),
                              util.max_uuid_with_dt(datetime.datetime.combine(day,
                                                             datetime.datetime.max.time()))])
-                if cur.fetchall():
+                if not cur.fetchall():
                     cur.execute("""DELETE FROM report_instance_day
                                    WHERE report_id=? AND tags=? AND day=?""",
                                 [report_id, list(tags), day])
-                
 
-            return len(ris)
+            return len(ris), [list(ts) for ts in all_tags_subsets]
 
 
     def select_report_instance_count_for_owner(self, owner_id):

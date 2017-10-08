@@ -330,19 +330,6 @@ class Report(Row):
         """The sum of input sizes consumed by the report instances of this report"""
         return c.dao.ReportDAO.select_report_instance_diskspace(self.owner_id, self.report_id)
 
-    def _delete_report_instances(self, tags, report_instance_list):
-        from mqe import dataseries
-
-        res = c.dao.ReportInstanceDAO.delete_multi(self.owner_id, self.report_id, tags,
-                                                   report_instance_list)
-
-        all_tags_subsets = set()
-        for ri in report_instance_list:
-            for tags_subset in util.powerset(ri.all_tags):
-                all_tags_subsets.add(tuple(tags_subset))
-
-        dataseries.clear_series_defs(self.report_id, [list(ts) for ts in all_tags_subsets])
-
     def delete_single_instance(self, report_instance_id):
         """Delete the given report instance and return a :class:`bool` telling if the
         operation was successful."""
@@ -351,18 +338,22 @@ class Report(Row):
         report_instance = self.fetch_single_instance(report_instance_id)
         if not report_instance:
             return False
-        self._delete_report_instances([], [report_instance])
+        self.delete_multiple_instances([], after=util.uuid_for_prev_dt(report_instance_id),
+                                       limit=1)
         return True
 
     def delete_multiple_instances(self, tags, from_dt=None, to_dt=None,
                                   before=None, after=None, limit=1000):
         """Delete a range of report instances specified by the arguments described
         for the :meth:`fetch_instances` method."""
-        ris = self.fetch_instances(from_dt=from_dt, to_dt=to_dt, before=before, after=after,
-                                   tags=tags, columns=['report_instance_id', 'all_tags'],
-                                   order='asc', limit=limit)
-        log.info('Selected %d report instances to delete', len(ris))
-        self._delete_report_instances(tags, ris)
+        from mqe import dataseries
+
+        min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
+
+        num, all_tags_subsets = c.dao.ReportInstanceDAO.delete_multi(self.owner_id,
+                                         self.report_id, tags, min_uuid, max_uuid, limit)
+
+        dataseries.clear_series_defs(self.report_id, all_tags_subsets)
 
     def fetch_days(self, tags=None):
         """Fetch a list of days on which report instances with the specified tags were created as :class:`~datetime.datetime` objects"""

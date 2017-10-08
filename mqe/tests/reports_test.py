@@ -316,6 +316,19 @@ class ReportTest(unittest.TestCase):
         ri = r2.fetch_single_instance(latest_instance_id)
         self.assertEqual('1', ri.input_string)
 
+    def test_delete_multiple_instances(self):
+        r, all_ris = self.create_multi_day_report()
+
+        r.delete_multiple_instances(['t1'])
+        self.assertEqual('-1 6'.split(), [ri['input_string'] for ri in r.fetch_instances()])
+        self.assertEqual(2, r.report_instance_count())
+
+        latest_instance_id = r.fetch_latest_instance_id(['t1'])
+        self.assertIsNone(latest_instance_id)
+
+        latest_instance_id = r.fetch_latest_instance_id(['t2'])
+        self.assertIsNotNone(latest_instance_id)
+
 
     def test_fetch_days(self):
         r, all_ris = self.create_multi_day_report()
