@@ -335,12 +335,10 @@ class Report(Row):
         operation was successful."""
         from mqe import dataseries
 
-        report_instance = self.fetch_single_instance(report_instance_id)
-        if not report_instance:
-            return False
-        self.delete_multiple_instances([], after=util.uuid_for_prev_dt(report_instance_id),
-                                       limit=1)
-        return True
+        num, all_tags_subsets = c.dao.ReportInstanceDAO.delete(self.owner_id, self.report_id,
+                                                               report_instance_id)
+        dataseries.clear_series_defs(self.report_id, all_tags_subsets)
+        return num > 0
 
     def delete_multiple_instances(self, tags=[], from_dt=None, to_dt=None,
                                   before=None, after=None, limit=1000):

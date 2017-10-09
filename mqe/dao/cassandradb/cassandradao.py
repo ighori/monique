@@ -391,13 +391,21 @@ class CassReportInstanceDAO(ReportInstanceDAO):
                                      ORDER BY report_instance_id DESC LIMIT 1""",
                  [report_id, latest_day, tags_repr_from_tags(tags)])['report_instance_id']
 
+    def delete(self, owner_id, report_id, report_instance_id):
+        ri = self.select(report_id, report_instance_id, [])
+        if not ri:
+            return 0, []
+        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri])
+
     def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
                      limit):
         ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
                                 ['report_instance_id', 'all_tags_repr', 'day', 'input_string'],
                                 'asc', limit)
-        log.info('Selected %d report instances for deletion', len(ris))
+        log.info('Selected %d report instances to delete', len(ris))
+        return self._delete_ris(owner_id, report_id, tags, ris)
 
+    def _delete_ris(self, owner_id, report_id, tags, ris):
         qs = []
         count_by_tags_repr = defaultdict(int)
         diskspace_by_tags_repr = defaultdict(int)

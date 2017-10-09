@@ -124,6 +124,10 @@ class ReportInstanceDAO(BaseDAO):
         deleted rows."""
         raise NotImplementedError()
 
+    def delete(self, owner_id, report_id, report_instance_id):
+        """Delete a single report_instance row. The result must be the same as for the
+        :meth:`delete_multi` method."""
+
     def select_report_instance_count_for_owner(self, owner_id):
         """Select the count of report_instance rows created for the ``owner_id``"""
         raise NotImplementedError()

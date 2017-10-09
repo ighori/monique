@@ -2,7 +2,6 @@ import logging
 import sqlite3
 import datetime
 
-from mqe import c
 from mqe import serialize
 from mqe import util
 from mqe.dao.daobase import *
@@ -416,12 +415,19 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
             row = cur.fetchone()
             return row['report_instance_id'] if row else None
 
-    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
-                     limit):
+    def delete(self, owner_id, report_id, report_instance_id):
+        ri = self.select(report_id, report_instance_id, [])
+        if not ri:
+            return 0, []
+        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri])
+
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id, limit):
         ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
                                 ['report_instance_id', 'all_tags', 'input_string'], 'asc', limit)
         log.info('Selected %d report instances for deletion', len(ris))
+        return self._delete_ris(owner_id, report_id, tags, ris)
 
+    def _delete_ris(self, owner_id, report_id, tags, ris):
         qs = []
         tags_days = set()
         all_tags_subsets = set()

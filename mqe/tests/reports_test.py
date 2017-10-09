@@ -316,6 +316,19 @@ class ReportTest(unittest.TestCase):
         ri = r2.fetch_single_instance(latest_instance_id)
         self.assertEqual('1', ri.input_string)
 
+    def test_delete_single_instance_same_created_dt(self):
+        owner_id = uuid.uuid1()
+        r = Report.insert(owner_id, 'r')
+        created_ris = []
+        for i in xrange(20):
+            res = r.process_input(str(i), created=datetime.datetime(2017, 1, 1))
+            created_ris.append(res.report_instance)
+
+        r.delete_single_instance(created_ris[10].report_instance_id)
+        ris = r.fetch_instances()
+        self.assertEqual({str(i) for i in xrange(20) if i != 10},
+                         {ri['input_string'] for ri in ris})
+
     def test_delete_multiple_instances_multiple_days(self):
         r, all_ris = self.create_multi_day_report()
         all_days = r.fetch_days()
