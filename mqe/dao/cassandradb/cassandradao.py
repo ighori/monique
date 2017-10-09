@@ -391,21 +391,23 @@ class CassReportInstanceDAO(ReportInstanceDAO):
                                      ORDER BY report_instance_id DESC LIMIT 1""",
                  [report_id, latest_day, tags_repr_from_tags(tags)])['report_instance_id']
 
-    def delete(self, owner_id, report_id, report_instance_id):
+    def delete(self, owner_id, report_id, report_instance_id, update_counters):
         ri = self.select(report_id, report_instance_id, [])
         if not ri:
             return 0, []
-        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri])
+        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri], update_counters)
 
     def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
-                     limit):
+                     limit, update_counters):
+        columns = ['report_instance_id', 'all_tags_repr', 'day']
+        if update_counters:
+            columns.append('input_string')
         ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
-                                ['report_instance_id', 'all_tags_repr', 'day', 'input_string'],
-                                'asc', limit)
+                                columns, 'asc', limit)
         log.info('Selected %d report instances to delete', len(ris))
-        return self._delete_ris(owner_id, report_id, tags, ris)
+        return self._delete_ris(owner_id, report_id, tags, ris, update_counters)
 
-    def _delete_ris(self, owner_id, report_id, tags, ris):
+    def _delete_ris(self, owner_id, report_id, tags, ris, update_counters):
         qs = []
         count_by_tags_repr = defaultdict(int)
         diskspace_by_tags_repr = defaultdict(int)
@@ -421,28 +423,30 @@ class CassReportInstanceDAO(ReportInstanceDAO):
                                   AND report_instance_id=?""",
                                [report_id, ri['day'], tags_repr, ri['report_instance_id']]))
                 count_by_tags_repr[tags_repr] += 1
-                diskspace_by_tags_repr[tags_repr] += self._compute_ri_diskspace(ri)
+                if update_counters:
+                    diskspace_by_tags_repr[tags_repr] += self._compute_ri_diskspace(ri)
                 tags_reprs_days.add((tags_repr, ri['day']))
 
-        qs.append(bind("""UPDATE mqe.report_instance_count_for_owner
-                          SET count=count-?
-                          WHERE owner_id=?""",
-                       [sum(count_by_tags_repr.values()), owner_id]))
-        qs.append(bind("""UPDATE mqe.report_instance_diskspace_for_owner
-                          SET bytes=bytes-?
-                          WHERE owner_id=?""",
-                       [sum(diskspace_by_tags_repr.values()), owner_id]))
-
-        for tags_repr, count in count_by_tags_repr.iteritems():
-            qs.append(bind("""UPDATE mqe.report_instance_count
+        if update_counters:
+            qs.append(bind("""UPDATE mqe.report_instance_count_for_owner
                               SET count=count-?
-                              WHERE report_id=? AND tags_repr=?""",
-                           [count, report_id, tags_repr]))
-        for tags_repr, bytes in diskspace_by_tags_repr.iteritems():
-            qs.append(bind("""UPDATE mqe.report_instance_diskspace
+                              WHERE owner_id=?""",
+                           [count_by_tags_repr[''], owner_id]))
+            qs.append(bind("""UPDATE mqe.report_instance_diskspace_for_owner
                               SET bytes=bytes-?
-                              WHERE report_id=? AND tags_repr=?""",
-                           [bytes, report_id, tags_repr]))
+                              WHERE owner_id=?""",
+                           [diskspace_by_tags_repr[''], owner_id]))
+
+            for tags_repr, count in count_by_tags_repr.iteritems():
+                qs.append(bind("""UPDATE mqe.report_instance_count
+                                  SET count=count-?
+                                  WHERE report_id=? AND tags_repr=?""",
+                               [count, report_id, tags_repr]))
+            for tags_repr, bytes in diskspace_by_tags_repr.iteritems():
+                qs.append(bind("""UPDATE mqe.report_instance_diskspace
+                                  SET bytes=bytes-?
+                                  WHERE report_id=? AND tags_repr=?""",
+                               [bytes, report_id, tags_repr]))
 
         c.cass.execute_parallel(qs)
 

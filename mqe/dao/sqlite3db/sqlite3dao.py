@@ -415,19 +415,19 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
             row = cur.fetchone()
             return row['report_instance_id'] if row else None
 
-    def delete(self, owner_id, report_id, report_instance_id):
+    def delete(self, owner_id, report_id, report_instance_id, update_counters):
         ri = self.select(report_id, report_instance_id, [])
         if not ri:
             return 0, []
-        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri])
+        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri], update_counters)
 
-    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id, limit):
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id, limit, update_counters):
         ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
                                 ['report_instance_id', 'all_tags', 'input_string'], 'asc', limit)
         log.info('Selected %d report instances for deletion', len(ris))
-        return self._delete_ris(owner_id, report_id, tags, ris)
+        return self._delete_ris(owner_id, report_id, tags, ris, update_counters)
 
-    def _delete_ris(self, owner_id, report_id, tags, ris):
+    def _delete_ris(self, owner_id, report_id, tags, ris, update_counters):
         qs = []
         tags_days = set()
         all_tags_subsets = set()
@@ -443,23 +443,24 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
                     tags_days.add((tuple(tags_subset), day))
                     all_tags_subsets.add(tuple(tags_subset))
 
-            total_diskspace = sum(self._compute_ri_diskspace(ri) for ri in ris)
-            cur.execute("""UPDATE report
-                           SET report_instance_count = report_instance_count - ?
-                           WHERE report_id=?""",
-                        [len(ris), report_id])
-            cur.execute("""UPDATE report
-                           SET report_instance_diskspace = report_instance_diskspace - ?
-                           WHERE report_id=?""",
-                        [total_diskspace, report_id])
-            cur.execute("""UPDATE report_data_for_owner
-                           SET report_instance_count=report_instance_count - ?
-                           WHERE owner_id=?""",
-                        [len(ris), owner_id])
-            cur.execute("""UPDATE report_data_for_owner
-                           SET report_instance_diskspace=report_instance_diskspace - ?
-                           WHERE owner_id=?""",
-                        [total_diskspace, owner_id])
+            if update_counters:
+                total_diskspace = sum(self._compute_ri_diskspace(ri) for ri in ris)
+                cur.execute("""UPDATE report
+                               SET report_instance_count = report_instance_count - ?
+                               WHERE report_id=?""",
+                            [len(ris), report_id])
+                cur.execute("""UPDATE report
+                               SET report_instance_diskspace = report_instance_diskspace - ?
+                               WHERE report_id=?""",
+                            [total_diskspace, report_id])
+                cur.execute("""UPDATE report_data_for_owner
+                               SET report_instance_count=report_instance_count - ?
+                               WHERE owner_id=?""",
+                            [len(ris), owner_id])
+                cur.execute("""UPDATE report_data_for_owner
+                               SET report_instance_diskspace=report_instance_diskspace - ?
+                               WHERE owner_id=?""",
+                            [total_diskspace, owner_id])
 
             ### Delete days for which report instances no longer exist
 

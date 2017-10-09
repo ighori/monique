@@ -330,26 +330,30 @@ class Report(Row):
         """The sum of input sizes consumed by the report instances of this report"""
         return c.dao.ReportDAO.select_report_instance_diskspace(self.owner_id, self.report_id)
 
-    def delete_single_instance(self, report_instance_id):
+    def delete_single_instance(self, report_instance_id, update_counters=True):
         """Delete the given report instance and return a :class:`bool` telling if the
-        operation was successful."""
+        operation was successful. If ``update_counters`` is ``False``, report instance
+        and disk space counters won't be updated."""
+
         from mqe import dataseries
 
         num, all_tags_subsets = c.dao.ReportInstanceDAO.delete(self.owner_id, self.report_id,
-                                                               report_instance_id)
+                                               report_instance_id, update_counters=update_counters)
         dataseries.clear_series_defs(self.report_id, all_tags_subsets)
         return num > 0
 
     def delete_multiple_instances(self, tags=[], from_dt=None, to_dt=None,
-                                  before=None, after=None, limit=1000):
+                                  before=None, after=None, limit=1000, update_counters=True):
         """Delete a range of report instances specified by the arguments described
-        for the :meth:`fetch_instances` method."""
+        for the :meth:`fetch_instances` method. If ``update_counters`` is ``False``, report instance
+        and disk space counters won't be updated."""
         from mqe import dataseries
 
         min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
 
         num, all_tags_subsets = c.dao.ReportInstanceDAO.delete_multi(self.owner_id,
-                                         self.report_id, tags, min_uuid, max_uuid, limit)
+                                         self.report_id, tags, min_uuid, max_uuid, limit,
+                                         update_counters=update_counters)
 
         dataseries.clear_series_defs(self.report_id, all_tags_subsets)
 

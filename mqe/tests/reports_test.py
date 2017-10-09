@@ -286,6 +286,22 @@ class ReportTest(unittest.TestCase):
         self.assertEqual('-1 0 1 3 4 5 6 7'.split(), [ri['input_string'] for ri in r.fetch_instances()])
         self.assertEqual(len(all_ris) - 1, r.report_instance_count())
 
+    def test_delete_single_instance_dont_update_counter(self):
+        r, all_ris = self.create_multi_day_report()
+
+        self.assertEqual(9, r.report_instance_count())
+        self.assertEqual(10, r.report_instance_diskspace())
+        self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
+        self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
+
+        r.delete_single_instance(all_ris[3].report_instance_id, update_counters=False)
+        self.assertEqual('-1 0 1 3 4 5 6 7'.split(), [ri['input_string'] for ri in r.fetch_instances()])
+
+        self.assertEqual(9, r.report_instance_count())
+        self.assertEqual(10, r.report_instance_diskspace())
+        self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
+        self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
+
     def test_delete_single_instance_multiple_days(self):
         r, all_ris = self.create_multi_day_report()
 
@@ -358,12 +374,36 @@ class ReportTest(unittest.TestCase):
     def test_delete_multiple_instances_delete_all(self):
         r, all_ris = self.create_multi_day_report()
 
+        self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
+        self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
+
         r.delete_multiple_instances()
 
         latest_instance_id = r.fetch_latest_instance_id()
         self.assertIsNone(latest_instance_id)
         self.assertFalse(r.fetch_instances())
         self.assertFalse(r.fetch_days())
+        self.assertEqual(0, r.report_instance_count())
+        self.assertEqual(0, r.report_instance_diskspace())
+        self.assertEqual(0, reports.report_instance_count_for_owner(r.owner_id))
+        self.assertEqual(0, reports.report_instance_diskspace_for_owner(r.owner_id))
+
+    def test_delete_multiple_instances_dont_update_counter(self):
+        r, all_ris = self.create_multi_day_report()
+
+        self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
+        self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
+
+        r.delete_multiple_instances(update_counters=False)
+
+        latest_instance_id = r.fetch_latest_instance_id()
+        self.assertIsNone(latest_instance_id)
+        self.assertFalse(r.fetch_instances())
+        self.assertFalse(r.fetch_days())
+        self.assertEqual(9, r.report_instance_count())
+        self.assertEqual(10, r.report_instance_diskspace())
+        self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
+        self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
 
     def test_delete_multiple_instances_delete_by_ids(self):
         r, all_ris = self.create_multi_day_report()
