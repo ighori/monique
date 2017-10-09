@@ -346,7 +346,7 @@ class Report(Row):
                                   before=None, after=None, limit=1000, update_counters=True):
         """Delete a range of report instances specified by the arguments described
         for the :meth:`fetch_instances` method. If ``update_counters`` is ``False``, report instance
-        and disk space counters won't be updated."""
+        and disk space counters won't be updated. Returns the number of deleted instances."""
         from mqe import dataseries
 
         min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
@@ -356,6 +356,8 @@ class Report(Row):
                                          update_counters=update_counters)
 
         dataseries.clear_series_defs(self.report_id, all_tags_subsets)
+
+        return num
 
     def delete(self):
         """Delete the report. The method detaches and deletes tiles that display the report.

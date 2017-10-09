@@ -356,7 +356,8 @@ class ReportTest(unittest.TestCase):
         all_days = r.fetch_days()
         self.assertEqual(9, len(all_days))
 
-        r.delete_multiple_instances(['t1'])
+        num = r.delete_multiple_instances(['t1'])
+        self.assertEqual(7, num)
 
         ris = r.fetch_instances()
         self.assertEqual('-1 6'.split(), [ri['input_string'] for ri in ris])
@@ -413,8 +414,9 @@ class ReportTest(unittest.TestCase):
         r.process_input('9')
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 1 2 3 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
-        r.delete_multiple_instances([], after=all_ris[1].report_instance_id,
+        num = r.delete_multiple_instances([], after=all_ris[1].report_instance_id,
                                     before=all_ris[-1].report_instance_id)
+        self.assertEqual(8, num)
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 9'.split(), [ri['input_string'] for ri in all_ris])
         days = r.fetch_days()
@@ -432,8 +434,9 @@ class ReportTest(unittest.TestCase):
         r.process_input('8')
         r.process_input('9')
         all_ris = r.fetch_instances()
-        r.delete_multiple_instances(['t2'], from_dt=utcnow()-datetime.timedelta(days=400),
-                                    to_dt=utcnow()-datetime.timedelta(days=13))
+        num = r.delete_multiple_instances(['t2'], from_dt=utcnow()-datetime.timedelta(days=400),
+                                          to_dt=utcnow()-datetime.timedelta(days=13))
+        self.assertEqual(1, num)
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 1 2 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
 
@@ -446,7 +449,8 @@ class ReportTest(unittest.TestCase):
         r.process_input('8')
         r.process_input('9')
         all_ris = r.fetch_instances()
-        r.delete_multiple_instances([], to_dt=utcnow()-datetime.timedelta(days=100))
+        num = r.delete_multiple_instances([], to_dt=utcnow()-datetime.timedelta(days=100))
+        self.assertEqual(6, num)
         all_ris = r.fetch_instances()
         self.assertEqual('5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
 
