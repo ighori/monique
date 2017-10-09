@@ -329,7 +329,10 @@ class ReportTest(unittest.TestCase):
         self.assertEqual({str(i) for i in xrange(20) if i != 10},
                          {ri['input_string'] for ri in ris})
 
-    def test_delete_multiple_instances_multiple_days(self):
+    def _day_before(self, minus_days):
+        return util.datetime_from_date((datetime.datetime.utcnow() - datetime.timedelta(days=minus_days)).date())
+
+    def test_delete_multiple_instances_delete_by_tag(self):
         r, all_ris = self.create_multi_day_report()
         all_days = r.fetch_days()
         self.assertEqual(9, len(all_days))
@@ -340,8 +343,11 @@ class ReportTest(unittest.TestCase):
         ris = r.fetch_instances()
         self.assertEqual('-1 6'.split(), [ri['input_string'] for ri in ris])
         self.assertEqual(2, r.report_instance_count())
+        self.assertEqual(3, r.report_instance_diskspace())
         days = r.fetch_days()
         self.assertEqual(2, len(days))
+        days.sort()
+        self.assertEqual([self._day_before(532), self._day_before(12)], days)
 
         latest_instance_id = r.fetch_latest_instance_id(['t1'])
         self.assertIsNone(latest_instance_id)
@@ -357,7 +363,54 @@ class ReportTest(unittest.TestCase):
         latest_instance_id = r.fetch_latest_instance_id()
         self.assertIsNone(latest_instance_id)
         self.assertFalse(r.fetch_instances())
+        self.assertFalse(r.fetch_days())
 
+    def test_delete_multiple_instances_delete_by_ids(self):
+        r, all_ris = self.create_multi_day_report()
+        r.process_input('8')
+        r.process_input('9')
+        all_ris = r.fetch_instances()
+        self.assertEqual('-1 0 1 2 3 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
+        r.delete_multiple_instances([], after=all_ris[1].report_instance_id,
+                                    before=all_ris[-1].report_instance_id)
+        all_ris = r.fetch_instances()
+        self.assertEqual('-1 0 9'.split(), [ri['input_string'] for ri in all_ris])
+        days = r.fetch_days()
+        days.sort()
+        self.assertEqual(3, len(days))
+        self.assertEqual([self._day_before(532), self._day_before(500), self._day_before(0)], days)
+
+        self.assertEqual(3, r.report_instance_count())
+        self.assertEqual(4, r.report_instance_diskspace())
+
+        self.assertEqual(all_ris[1].report_instance_id, r.fetch_latest_instance_id(['t1']))
+
+    def test_delete_multiple_instances_delete_by_dts(self):
+        r, all_ris = self.create_multi_day_report()
+        r.process_input('8')
+        r.process_input('9')
+        all_ris = r.fetch_instances()
+        r.delete_multiple_instances(['t2'], from_dt=utcnow()-datetime.timedelta(days=400),
+                                    to_dt=utcnow()-datetime.timedelta(days=13))
+        all_ris = r.fetch_instances()
+        self.assertEqual('-1 0 1 2 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
+
+        days = r.fetch_days()
+        days.sort()
+        self.assertEqual(9, len(days))
+
+    def test_delete_multiple_instances_delete_by_dts_no_tags(self):
+        r, all_ris = self.create_multi_day_report()
+        r.process_input('8')
+        r.process_input('9')
+        all_ris = r.fetch_instances()
+        r.delete_multiple_instances([], to_dt=utcnow()-datetime.timedelta(days=100))
+        all_ris = r.fetch_instances()
+        self.assertEqual('5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
+
+        days = r.fetch_days()
+        days.sort()
+        self.assertEqual(4, len(days))
 
     def test_fetch_days(self):
         enable_logging(True, True)
