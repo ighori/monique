@@ -285,7 +285,6 @@ class ReportTest(unittest.TestCase):
     def test_delete_single_instance(self):
         r, all_ris = self.create_multi_day_report()
 
-        enable_logging(True, True)
         r.delete_single_instance(all_ris[3].report_instance_id)
         self.assertEqual('-1 0 1 3 4 5 6 7'.split(), [ri['input_string'] for ri in r.fetch_instances()])
         self.assertEqual(len(all_ris) - 1, r.report_instance_count())
@@ -357,7 +356,6 @@ class ReportTest(unittest.TestCase):
         all_days = r.fetch_days()
         self.assertEqual(9, len(all_days))
 
-        enable_logging(True, True)
         r.delete_multiple_instances(['t1'])
 
         ris = r.fetch_instances()
@@ -457,7 +455,6 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(4, len(days))
 
     def test_fetch_days(self):
-        enable_logging(True, True)
         r, all_ris = self.create_multi_day_report()
 
         dts = r.fetch_days()

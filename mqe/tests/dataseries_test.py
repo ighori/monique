@@ -416,7 +416,6 @@ class GetSeriesValuesTest(unittest.TestCase):
         self.assertEqual(1, len(inst))
         self.assertEqual('2', inst[0].input_string)
 
-        enable_logging(True, True)
         sd = dataseries.SeriesDef.select(r.report_id, [], sd_id)
         values = dataseries.get_series_values(sd, r, utcnow() - timedelta(days=1), utcnow())
         self.assertEqual(1, len(values))
