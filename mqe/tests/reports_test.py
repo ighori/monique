@@ -316,12 +316,19 @@ class ReportTest(unittest.TestCase):
         ri = r2.fetch_single_instance(latest_instance_id)
         self.assertEqual('1', ri.input_string)
 
-    def test_delete_multiple_instances(self):
+    def test_delete_multiple_instances_multiple_days(self):
         r, all_ris = self.create_multi_day_report()
+        all_days = r.fetch_days()
+        self.assertEqual(9, len(all_days))
 
+        enable_logging(True, True)
         r.delete_multiple_instances(['t1'])
-        self.assertEqual('-1 6'.split(), [ri['input_string'] for ri in r.fetch_instances()])
+
+        ris = r.fetch_instances()
+        self.assertEqual('-1 6'.split(), [ri['input_string'] for ri in ris])
         self.assertEqual(2, r.report_instance_count())
+        days = r.fetch_days()
+        self.assertEqual(2, len(days))
 
         latest_instance_id = r.fetch_latest_instance_id(['t1'])
         self.assertIsNone(latest_instance_id)
@@ -329,11 +336,22 @@ class ReportTest(unittest.TestCase):
         latest_instance_id = r.fetch_latest_instance_id(['t2'])
         self.assertIsNotNone(latest_instance_id)
 
+    def test_delete_multiple_instances_delete_all(self):
+        r, all_ris = self.create_multi_day_report()
+
+        r.delete_multiple_instances()
+
+        latest_instance_id = r.fetch_latest_instance_id()
+        self.assertIsNone(latest_instance_id)
+        self.assertFalse(r.fetch_instances())
+
 
     def test_fetch_days(self):
+        enable_logging(True, True)
         r, all_ris = self.create_multi_day_report()
 
         dts = r.fetch_days()
+        self.assertEqual(9, len(dts))
         for dt in dts:
             self.assertIsInstance(dt, datetime.datetime)
 

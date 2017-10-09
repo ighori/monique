@@ -287,7 +287,8 @@ class Sqlite3ReportDAO(ReportDAO):
             cur.execute("""SELECT day FROM report_instance_day
                                WHERE report_id=? AND tags=?""",
                               [report_id, tags])
-            return [row['day'] for row in cur.fetchall()]
+            dates = [row['day'] for row in cur.fetchall()]
+            return [util.datetime_from_date(d) for d in dates]
 
 
     def select_tags_sample(self, report_id, tag_prefix, limit):

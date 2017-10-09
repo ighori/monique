@@ -342,7 +342,7 @@ class Report(Row):
                                        limit=1)
         return True
 
-    def delete_multiple_instances(self, tags, from_dt=None, to_dt=None,
+    def delete_multiple_instances(self, tags=[], from_dt=None, to_dt=None,
                                   before=None, after=None, limit=1000):
         """Delete a range of report instances specified by the arguments described
         for the :meth:`fetch_instances` method."""
@@ -357,7 +357,7 @@ class Report(Row):
 
     def fetch_days(self, tags=None):
         """Fetch a list of days on which report instances with the specified tags were created as :class:`~datetime.datetime` objects"""
-        return c.dao.ReportDAO.select_report_instance_days(self.report_id, tags)
+        return c.dao.ReportDAO.select_report_instance_days(self.report_id, tags or [])
 
     def fetch_tags_sample(self, tag_prefix='', limit=10):
         """Fetch sample tags attached to the report instances, having the given ``prefix``,
