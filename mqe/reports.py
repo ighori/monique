@@ -357,6 +357,30 @@ class Report(Row):
 
         dataseries.clear_series_defs(self.report_id, all_tags_subsets)
 
+    def delete(self):
+        """Delete the report. The method detaches and deletes tiles that display the report.
+        Report instances are NOT deleted by the method - the method
+        :meth:`delete_multiple_instances` must be called before :meth:`delete` to achieve it.
+        """
+        from mqe import dashboards
+        from mqe import layouts
+
+        owner_dashboards = dashboards.OwnerDashboards(self.owner_id)
+        for dashboard in owner_dashboards.dashboards:
+            layout = layouts.Layout.select(self.owner_id, dashboard.dashboard_id)
+            if not layout:
+                continue
+            tiles_to_detach = [tile for tile in layout.tile_dict
+                                    if tile.report_id == self.report_id]
+            if tiles_to_detach:
+                res = layouts.replace_tiles({tile: None for tile in tiles_to_detach}, None)
+                if not res:
+                    return False
+
+        c.dao.ReportDAO.delete(self.owner_id, self.report_id)
+
+        return True
+
     def fetch_days(self, tags=None):
         """Fetch a list of days on which report instances with the specified tags were created as :class:`~datetime.datetime` objects"""
         return c.dao.ReportDAO.select_report_instance_days(self.report_id, tags or [])

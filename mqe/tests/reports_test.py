@@ -7,6 +7,10 @@ from mqe import reports
 from mqe.reports import Report
 from mqetables.enrichment import EnrichedTable
 from mqetables.parsing import Table
+from mqe.dataseries import SeriesSpec
+from mqe.dashboards import OwnerDashboards
+from mqe.tiles import Tile
+from mqe import layouts
 from mqe import util
 from mqe.tests.tutil import enable_logging
 
@@ -478,7 +482,74 @@ class ReportTest(unittest.TestCase):
         self.assertFalse(r2.has_tags())
         self.assertFalse(r2.fetch_tags_sample('t'))
 
+    def test_delete_simple(self):
+        owner_id = uuid.uuid1()
+        r1 = Report.insert(owner_id, 'r1')
+        r1.process_input('1')
+        r2 = Report.insert(owner_id, 'r2')
+        r2.process_input('2')
 
+        ids = reports.fetch_reports_by_name(owner_id, 'r')
+        self.assertEqual(2, len(ids))
+
+        r2.delete()
+
+        reps = reports.fetch_reports_by_name(owner_id, 'r')
+        self.assertEqual([r1], reps)
+        self.assertIsNone(Report.select(r2.report_id))
+
+    def test_delete_with_tiles(self):
+        owner_id = uuid.uuid1()
+        r1 = Report.insert(owner_id, 'r1')
+        r1.process_input('1')
+        r2 = Report.insert(owner_id, 'r2')
+        r2.process_input('2')
+        r3 = Report.insert(owner_id, 'r3')
+        r3.process_input('3')
+
+        tile_config = {
+            'series_spec_list': [SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})],
+        }
+        od = OwnerDashboards(owner_id)
+        od.insert_dashboard('Second')
+        od.insert_dashboard('Third')
+
+        tile1_1 = Tile.insert(owner_id, r1.report_id, od.dashboards[0].dashboard_id, tile_config)
+        assert tile1_1.get_tile_data()['series_data']
+        tile2_1 = Tile.insert(owner_id, r2.report_id, od.dashboards[1].dashboard_id, tile_config)
+        assert tile2_1.get_tile_data()['series_data']
+        tile3_1 = Tile.insert(owner_id, r3.report_id, od.dashboards[2].dashboard_id, tile_config)
+        assert tile3_1.get_tile_data()['series_data']
+        layouts.place_tile(tile1_1)
+        layouts.place_tile(tile2_1)
+        layouts.place_tile(tile3_1)
+
+        r2.delete()
+
+        reps = reports.fetch_reports_by_name(owner_id, '')
+        self.assertEqual([r1, r3], reps)
+
+        self.assertEqual(1, len(layouts.Layout.select(owner_id, od.dashboards[0].dashboard_id).layout_dict))
+        self.assertEqual(0, len(layouts.Layout.select(owner_id, od.dashboards[1].dashboard_id).layout_dict))
+        self.assertEqual(1, len(layouts.Layout.select(owner_id, od.dashboards[2].dashboard_id).layout_dict))
+
+        tile1_2 = Tile.insert(owner_id, r1.report_id, od.dashboards[0].dashboard_id, tile_config)
+        tile1_3 = Tile.insert(owner_id, r1.report_id, od.dashboards[1].dashboard_id, tile_config)
+        tile1_4 = Tile.insert(owner_id, r1.report_id, od.dashboards[1].dashboard_id, tile_config)
+        tile1_5 = Tile.insert(owner_id, r1.report_id, od.dashboards[2].dashboard_id, tile_config)
+        layouts.place_tile(tile1_2)
+        layouts.place_tile(tile1_3)
+        layouts.place_tile(tile1_4)
+        layouts.place_tile(tile1_5)
+
+        r1.delete()
+
+        self.assertEqual(0, len(layouts.Layout.select(owner_id, od.dashboards[0].dashboard_id).layout_dict))
+        self.assertEqual(0, len(layouts.Layout.select(owner_id, od.dashboards[1].dashboard_id).layout_dict))
+        self.assertEqual(1, len(layouts.Layout.select(owner_id, od.dashboards[2].dashboard_id).layout_dict))
+
+        reps = reports.fetch_reports_by_name(owner_id, '')
+        self.assertEqual([r3], reps)
 
 class ReportsModuleTest(unittest.TestCase):
 

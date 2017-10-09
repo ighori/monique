@@ -265,6 +265,17 @@ class Sqlite3ReportDAO(ReportDAO):
             return None
         return row
 
+    def delete(self, owner_id, report_id):
+        row = self.select(report_id)
+        if not row:
+            log.warn('No report row %s', report_id)
+            return
+
+        with cursor() as cur:
+            cur.execute("""DELETE FROM report WHERE report_id=?""", [report_id])
+            cur.execute("""DELETE FROM report_tag WHERE report_id=?""", [report_id])
+
+
     def select_report_instance_count(self, owner_id, report_id):
         with cursor() as cur:
             cur.execute("""SELECT report_instance_count FROM report

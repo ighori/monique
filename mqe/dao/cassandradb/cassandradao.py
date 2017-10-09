@@ -197,6 +197,25 @@ class CassReportDAO(ReportDAO):
 
         return row
 
+    def delete(self, owner_id, report_id):
+        row = self.select(report_id)
+        if not row:
+            log.warn('No report row %s', report_id)
+            return
+
+        qs = []
+
+        qs.append(bind("""DELETE FROM mqe.report WHERE report_id=?""", [report_id]))
+        qs.append(bind("""DELETE FROM mqe.report_by_owner_id_report_name
+                          WHERE owner_id=? AND report_name=?""", [owner_id, row['report_name']]))
+        for prefix in util.iter_prefixes(row['report_name'], include_empty=True):
+            qs.append(bind("""DELETE FROM mqe.report_name_by_owner_id_report_name_prefix
+                              WHERE owner_id=? AND report_name_prefix=? AND report_name=?""",
+                           [owner_id, prefix, row['report_name']]))
+        qs.append(bind("""DELETE FROM mqe.report_tag WHERE report_id=?""", [report_id]))
+
+        c.cass.execute_parallel(qs)
+
     def select_report_instance_count(self, owner_id, report_id):
         return c.cass.execute_fst("""SELECT count FROM mqe.report_instance_count
                                      WHERE report_id=? AND tags_repr=''""",

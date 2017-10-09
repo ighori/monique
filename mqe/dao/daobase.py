@@ -56,6 +56,10 @@ class ReportDAO(BaseDAO):
         """Insert and return a new report row"""
         raise NotImplementedError()
 
+    def delete(self, owner_id, report_id):
+        """Delete the report row"""
+        raise NotImplementedError()
+
     def select_report_instance_diskspace(self, owner_id, report_id):
         """Select the number of disk space bytes consumed by report_instance rows associated
         with a report row with the given ``report_id``"""

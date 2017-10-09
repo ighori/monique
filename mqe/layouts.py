@@ -282,7 +282,6 @@ def replace_tiles(old_to_new_tile_dict, for_layout_id, sync_tpcreated=True):
     as keys are deleted. Otherwise, the values of the dictionary are deleted.
 
     :param old_to_new_tile_dict: a dictionary defining the replacement
-    :param for_layout_id:
     :param ~uuid.UUID for_layout_id: if ``None``, do the replacement in a layout with any
         :attr:`~mqe.layouts.Layout.layout_id`, possibly making multiple tries. Otherwise,
         perform the operation only if the current :attr:`~mqe.layouts.Layout.layout_id`
