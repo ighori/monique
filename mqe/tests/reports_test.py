@@ -12,6 +12,7 @@ from mqe.dashboards import OwnerDashboards
 from mqe.tiles import Tile
 from mqe import layouts
 from mqe import util
+from mqe import mqeconfig
 from mqe.tests.tutil import enable_logging
 
 utcnow = datetime.datetime.utcnow
@@ -351,12 +352,12 @@ class ReportTest(unittest.TestCase):
     def _day_before(self, minus_days):
         return util.datetime_from_date((datetime.datetime.utcnow() - datetime.timedelta(days=minus_days)).date())
 
-    def test_delete_multiple_instances_delete_by_tag(self):
+    def test_delete_multiple_instances_delete_by_tag(self, use_insertion_datetime=False):
         r, all_ris = self.create_multi_day_report()
         all_days = r.fetch_days()
         self.assertEqual(9, len(all_days))
 
-        num = r.delete_multiple_instances(['t1'])
+        num = r.delete_multiple_instances(['t1'], use_insertion_datetime=use_insertion_datetime)
         self.assertEqual(7, num)
 
         ris = r.fetch_instances()
@@ -374,13 +375,18 @@ class ReportTest(unittest.TestCase):
         latest_instance_id = r.fetch_latest_instance_id(['t2'])
         self.assertIsNotNone(latest_instance_id)
 
-    def test_delete_multiple_instances_delete_all(self):
+    def test_delete_multiple_instances_delete_by_tag_use_insertion_datetime(self):
+        if mqeconfig.DATABASE_TYPE == 'sqlite3':
+            return
+        self.test_delete_multiple_instances_delete_by_tag(use_insertion_datetime=True)
+
+    def test_delete_multiple_instances_delete_all(self, use_insertion_datetime=False):
         r, all_ris = self.create_multi_day_report()
 
         self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
         self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
 
-        r.delete_multiple_instances()
+        r.delete_multiple_instances(use_insertion_datetime=use_insertion_datetime)
 
         latest_instance_id = r.fetch_latest_instance_id()
         self.assertIsNone(latest_instance_id)
@@ -390,6 +396,11 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(0, r.report_instance_diskspace())
         self.assertEqual(0, reports.report_instance_count_for_owner(r.owner_id))
         self.assertEqual(0, reports.report_instance_diskspace_for_owner(r.owner_id))
+
+    def test_delete_multiple_instances_delete_all_use_insertion_datetime(self):
+        if mqeconfig.DATABASE_TYPE == 'sqlite3':
+            return
+        self.test_delete_multiple_instances_delete_all(True)
 
     def test_delete_multiple_instances_dont_update_counter(self):
         r, all_ris = self.create_multi_day_report()
@@ -408,14 +419,15 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(9, reports.report_instance_count_for_owner(r.owner_id))
         self.assertEqual(10, reports.report_instance_diskspace_for_owner(r.owner_id))
 
-    def test_delete_multiple_instances_delete_by_ids(self):
+    def test_delete_multiple_instances_delete_by_ids(self, use_insertion_datetime=False):
         r, all_ris = self.create_multi_day_report()
         r.process_input('8')
         r.process_input('9')
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 1 2 3 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
         num = r.delete_multiple_instances([], after=all_ris[1].report_instance_id,
-                                    before=all_ris[-1].report_instance_id)
+                                          before=all_ris[-1].report_instance_id,
+                                          use_insertion_datetime=use_insertion_datetime)
         self.assertEqual(8, num)
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 9'.split(), [ri['input_string'] for ri in all_ris])
@@ -428,6 +440,11 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(4, r.report_instance_diskspace())
 
         self.assertEqual(all_ris[1].report_instance_id, r.fetch_latest_instance_id(['t1']))
+
+    def test_delete_multiple_instances_delete_by_ids_use_insertion_datetime(self):
+        if mqeconfig.DATABASE_TYPE == 'sqlite3':
+            return
+        self.test_delete_multiple_instances_delete_by_ids(True)
 
     def test_delete_multiple_instances_delete_by_dts(self):
         r, all_ris = self.create_multi_day_report()
@@ -443,6 +460,27 @@ class ReportTest(unittest.TestCase):
         days = r.fetch_days()
         days.sort()
         self.assertEqual(9, len(days))
+
+    def test_delete_multiple_instances_delete_by_dt_use_insertion_datetime(self):
+        if mqeconfig.DATABASE_TYPE == 'sqlite3':
+            return
+        r, all_ris = self.create_multi_day_report()
+        r.process_input('8')
+        r9 = r.process_input('9').report_instance
+        all_ris = r.fetch_instances()
+        num = r.delete_multiple_instances([],
+                                          to_dt=utcnow()-datetime.timedelta(days=1),
+                                          use_insertion_datetime=True)
+        self.assertEqual(0, num)
+        all_ris = r.fetch_instances()
+        self.assertEqual('-1 0 1 2 3 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
+
+        num = r.delete_multiple_instances([],
+                                          to_dt=r9.created,
+                                          use_insertion_datetime=True)
+        self.assertEqual(10, num)
+        all_ris = r.fetch_instances()
+        self.assertEqual('9'.split(), [ri['input_string'] for ri in all_ris])
 
     def test_delete_multiple_instances_delete_by_dts_no_tags(self):
         r, all_ris = self.create_multi_day_report()

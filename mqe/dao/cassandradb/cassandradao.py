@@ -416,17 +416,37 @@ class CassReportInstanceDAO(ReportInstanceDAO):
             return 0, []
         return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri], update_counters)
 
-    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
-                     limit, update_counters):
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id,
+                     max_report_instance_id, limit, update_counters, use_insertion_datetime):
         columns = ['report_instance_id', 'all_tags_repr', 'day']
         if update_counters:
             columns.append('input_string')
         ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
                                 columns, 'asc', limit)
         log.info('Selected %d report instances to delete', len(ris))
+
+        if use_insertion_datetime:
+            days = util.uniq_sameorder(ri['day'] for ri in ris)
+            rim_rows = c.cass.execute("""SELECT report_instance_id, inserted
+                                     FROM mqe.report_instance_metadata
+                                     WHERE report_id=? AND day IN ?
+                                     AND report_instance_id > ? AND report_instance_id < ?""",
+                                      [report_id, days, min_report_instance_id,
+                                       max_report_instance_id])
+            assert len(rim_rows) == len(ris)
+
+            ri_by_rid = {ri['report_instance_id']: ri for ri in ris}
+            from_dt = util.datetime_from_uuid1(min_report_instance_id)
+            to_dt = util.datetime_from_uuid1(max_report_instance_id)
+            for rim in rim_rows:
+                if not (from_dt <= rim['inserted'] <= to_dt):
+                    del ri_by_rid[rim['report_instance_id']]
+            ris = ri_by_rid.values()
+
         return self._delete_ris(owner_id, report_id, tags, ris, update_counters)
 
     def _delete_ris(self, owner_id, report_id, tags, ris, update_counters):
+
         qs = []
         count_by_tags_repr = defaultdict(int)
         diskspace_by_tags_repr = defaultdict(int)

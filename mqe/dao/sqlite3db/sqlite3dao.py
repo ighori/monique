@@ -432,7 +432,10 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
             return 0, []
         return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri], update_counters)
 
-    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id, limit, update_counters):
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
+                     limit, update_counters, use_insertion_datetime):
+        if use_insertion_datetime:
+            raise NotImplementedError('Sqlite3ReportInstanceDAO doesn\'t support the use_insertion_datetime flag')
         ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
                                 ['report_instance_id', 'all_tags', 'input_string'], 'asc', limit)
         log.info('Selected %d report instances for deletion', len(ris))

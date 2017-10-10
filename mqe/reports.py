@@ -343,17 +343,26 @@ class Report(Row):
         return num > 0
 
     def delete_multiple_instances(self, tags=[], from_dt=None, to_dt=None,
-                                  before=None, after=None, limit=1000, update_counters=True):
+                                  before=None, after=None, limit=1000, update_counters=True,
+                                  use_insertion_datetime=False):
         """Delete a range of report instances specified by the arguments described
-        for the :meth:`fetch_instances` method. If ``update_counters`` is ``False``, report instance
-        and disk space counters won't be updated. Returns the number of deleted instances."""
+        for the :meth:`fetch_instances` method.
+
+        :param bool update_counters: whether report instance and disk space counters should be
+             updated.
+        :param bool use_insertion_datetime: whether the selected report instances to
+            delete should have an insertion datetime contained in the time range
+            specified by the parameters (as opposed to checking a creation datetime
+            only, which can be customized). This flag is not supported for SQlite3.
+        :return: the number of deleted report instances"""
         from mqe import dataseries
 
         min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
 
         num, all_tags_subsets = c.dao.ReportInstanceDAO.delete_multi(self.owner_id,
                                          self.report_id, tags, min_uuid, max_uuid, limit,
-                                         update_counters=update_counters)
+                                         update_counters=update_counters,
+                                         use_insertion_datetime=use_insertion_datetime)
 
         dataseries.clear_series_defs(self.report_id, all_tags_subsets)
 

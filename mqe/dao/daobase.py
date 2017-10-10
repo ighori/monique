@@ -120,12 +120,20 @@ class ReportInstanceDAO(BaseDAO):
         """Select the newest ``report_instance_id`` of a report_instance row having the ``tags_subset`` as a subset of ``all_tags``"""
         raise NotImplementedError()
 
-    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id, limit, update_counters):
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
+                     limit, update_counters, use_insertion_datetime):
         """Delete report_instance rows with the ``report_instance_id`` contained between ``min_report_instance_id`` and ``max_report_instance_id``, which have the ``tags_subset``
-        as a subset of ``all_tags``. ``update_counters`` is a flag telling if report
-        instance and diskspace counters should be updated. The method must return a
-        two-element tuple containing the number of the deleted rows and a list of tags
-         subsets present in the deleted rows."""
+        as a subset of ``all_tags``.
+
+        ``update_counters`` is a flag telling if report instance and diskspace counters should be updated.
+
+        ``use_insertion_datetime`` is a flag telling if only rows which were inserted
+        (possibly with a custom creation datetime) in the time range specified by the
+        ``min_report_instance_id``, ``max_report_instance_id`` arguments should be
+        deleted.
+
+        The method must return a two-element tuple containing the number of the deleted rows and
+        a list of tags subsets present in the deleted rows."""
         raise NotImplementedError()
 
     def delete(self, owner_id, report_id, report_instance_id, update_counters):
