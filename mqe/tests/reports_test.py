@@ -476,11 +476,11 @@ class ReportTest(unittest.TestCase):
         self.assertEqual('-1 0 1 2 3 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
 
         num = r.delete_multiple_instances([],
-                                          to_dt=r9.created,
+                                          to_dt=r9.created - datetime.timedelta(milliseconds=1),
                                           use_insertion_datetime=True)
-        self.assertEqual(10, num)
         all_ris = r.fetch_instances()
         self.assertEqual('9'.split(), [ri['input_string'] for ri in all_ris])
+        self.assertEqual(10, num)
 
     def test_delete_multiple_instances_delete_by_dts_no_tags(self):
         r, all_ris = self.create_multi_day_report()
@@ -516,6 +516,9 @@ class ReportTest(unittest.TestCase):
 
         self.assertEqual(['t1', 't2'], r.fetch_tags_sample())
         self.assertEqual(['t1'], r.fetch_tags_sample('t1'))
+
+        self.assertEqual(['t1'], r.fetch_tags_sample(tag_prefix='t', limit=1, after_tag=None))
+        self.assertEqual(['t2'], r.fetch_tags_sample(tag_prefix='t', limit=1, after_tag='t1'))
 
         r2 = Report.insert(uuid.uuid1(), 'r2')
         self.assertFalse(r2.has_tags())

@@ -396,10 +396,12 @@ class Report(Row):
         """Fetch a list of days on which report instances with the specified tags were created as :class:`~datetime.datetime` objects"""
         return c.dao.ReportDAO.select_report_instance_days(self.report_id, tags or [])
 
-    def fetch_tags_sample(self, tag_prefix='', limit=10):
+    def fetch_tags_sample(self, tag_prefix='', limit=10, after_tag=None):
         """Fetch sample tags attached to the report instances, having the given ``prefix``,
+        placed lexicographically after the ``after_tag`` (if specified),
         returning up to the ``limit`` values"""
-        return c.dao.ReportDAO.select_tags_sample(self.report_id, tag_prefix, limit)
+        return c.dao.ReportDAO.select_tags_sample(self.report_id, tag_prefix, limit,
+                                                  after_tag or '')
 
     def has_tags(self):
         """Tells if any tags are used for the report's instances"""

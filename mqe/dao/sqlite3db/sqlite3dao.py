@@ -301,11 +301,11 @@ class Sqlite3ReportDAO(ReportDAO):
             return [util.datetime_from_date(d) for d in dates]
 
 
-    def select_tags_sample(self, report_id, tag_prefix, limit):
+    def select_tags_sample(self, report_id, tag_prefix, limit, after_tag):
         with cursor() as cur:
             cur.execute("""SELECT tag FROM report_tag
-                           WHERE report_id=? AND tag LIKE ? LIMIT ?""",
-                        [report_id, '%s%%' % tag_prefix, limit])
+                           WHERE report_id=? AND tag > ? AND tag LIKE ? LIMIT ?""",
+                        [report_id, after_tag, '%s%%' % tag_prefix, limit])
             return [r['tag'] for r in cur.fetchall()]
 
 

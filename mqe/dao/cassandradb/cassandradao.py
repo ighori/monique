@@ -232,10 +232,12 @@ class CassReportDAO(ReportDAO):
                               [report_id, tags_repr_from_tags(tags)])
         return [dt_from_day_text(r['day']) for r in rows]
 
-    def select_tags_sample(self, report_id, tag_prefix, limit):
+    def select_tags_sample(self, report_id, tag_prefix, limit, after_tag):
         rows = c.cass.execute("""SELECT tag FROM mqe.report_tag
-                                 WHERE report_id=? AND tag_prefix=? LIMIT ?""",
-                              [report_id, tag_prefix, limit])
+                                 WHERE report_id=? AND tag_prefix=?
+                                 AND tag > ?
+                                 LIMIT ?""",
+                              [report_id, tag_prefix, after_tag, limit])
         return [r['tag'] for r in rows]
 
 

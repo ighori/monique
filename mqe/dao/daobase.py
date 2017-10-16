@@ -71,9 +71,10 @@ class ReportDAO(BaseDAO):
         were created"""
         raise NotImplementedError()
 
-    def select_tags_sample(self, report_id, tag_prefix, limit):
+    def select_tags_sample(self, report_id, tag_prefix, limit, after_tag):
         """Select a list of lists of strings - tags present in report_instance rows
-        associated with the report row, having the prefix ``tag_prefix``, limiting
+        associated with the report row, having the prefix ``tag_prefix``, placed
+        lexicographically after the tag ``after_tag`` (which can be an empty string), limiting
         the number of returned results to ``limit``"""
         raise NotImplementedError()
 
