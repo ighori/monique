@@ -491,6 +491,7 @@ class CassReportInstanceDAO(ReportInstanceDAO):
 
         c.cass.execute_parallel(qs)
 
+
         ### Delete days for which report instances no longer exist
 
         days_qs = {}
@@ -510,6 +511,31 @@ class CassReportInstanceDAO(ReportInstanceDAO):
                            [report_id, tags_repr, day]))
         log.info('Deleting %s days', len(qs))
         c.cass.execute_parallel(qs)
+
+
+        ### Delete tags for which report instances no longer exist
+
+        tags_present = set()
+        for tags_repr, _ in tags_reprs_days:
+            for tag in tags_from_tags_repr(tags_repr):
+                tags_present.add(tag)
+
+        qs = []
+        for tag in tags_present:
+            rows = c.cass.execute("""SELECT tags_repr FROM mqe.report_instance_day
+                                     WHERE report_id=? AND tags_repr=?
+                                     LIMIT 1""",
+                                  [report_id, tags_repr_from_tags([tag])])
+            if rows:
+                continue
+            for p in util.iter_prefixes(tag, include_empty=True):
+                qs.append(bind("""DELETE FROM mqe.report_tag
+                                  WHERE report_id=? AND tag_prefix=? AND tag=?""",
+                               [report_id, p, tag]))
+
+        log.info('Deleting %s tag rows', len(qs))
+        c.cass.execute_parallel(qs)
+
 
         return len(ris), [tags_from_tags_repr(tr) for tr in count_by_tags_repr]
 

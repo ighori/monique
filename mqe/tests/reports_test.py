@@ -289,6 +289,7 @@ class ReportTest(unittest.TestCase):
         r.delete_single_instance(all_ris[3].report_instance_id)
         self.assertEqual('-1 0 1 3 4 5 6 7'.split(), [ri['input_string'] for ri in r.fetch_instances()])
         self.assertEqual(len(all_ris) - 1, r.report_instance_count())
+        self.assertEqual(['t1', 't2'], r.fetch_tags_sample())
 
     def test_delete_single_instance_dont_update_counter(self):
         r, all_ris = self.create_multi_day_report()
@@ -311,6 +312,8 @@ class ReportTest(unittest.TestCase):
 
         r.delete_single_instance(all_ris[-1].report_instance_id)
 
+        self.assertEqual(['t1', 't2'], r.fetch_tags_sample())
+
         latest_instance_id = r.fetch_latest_instance_id()
         self.assertTrue(latest_instance_id)
         ri = r.fetch_single_instance(latest_instance_id)
@@ -329,9 +332,13 @@ class ReportTest(unittest.TestCase):
 
         r2 = Report.insert(r.owner_id, 'r2')
         r2.process_input('1', created=utcnow()-datetime.timedelta(days=5, seconds=2))
-        r2.process_input('2', created=utcnow()-datetime.timedelta(days=5, seconds=1))
+        r2.process_input('2', created=utcnow()-datetime.timedelta(days=5, seconds=1), tags=['x'])
+
         latest_instance_id = r2.fetch_latest_instance_id()
         r2.delete_single_instance(latest_instance_id)
+
+        self.assertEqual([], r2.fetch_tags_sample())
+
         latest_instance_id = r2.fetch_latest_instance_id()
         ri = r2.fetch_single_instance(latest_instance_id)
         self.assertEqual('1', ri.input_string)
@@ -359,6 +366,10 @@ class ReportTest(unittest.TestCase):
 
         num = r.delete_multiple_instances(['t1'], use_insertion_datetime=use_insertion_datetime)
         self.assertEqual(7, num)
+
+        self.assertEqual(['t2'], r.fetch_tags_sample())
+        self.assertEqual(['t2'], r.fetch_tags_sample(tag_prefix='t'))
+        self.assertEqual(['t2'], r.fetch_tags_sample(tag_prefix='t2'))
 
         ris = r.fetch_instances()
         self.assertEqual('-1 6'.split(), [ri['input_string'] for ri in ris])
@@ -388,6 +399,8 @@ class ReportTest(unittest.TestCase):
 
         r.delete_multiple_instances(use_insertion_datetime=use_insertion_datetime)
 
+        self.assertEqual([], r.fetch_tags_sample())
+
         latest_instance_id = r.fetch_latest_instance_id()
         self.assertIsNone(latest_instance_id)
         self.assertFalse(r.fetch_instances())
@@ -410,6 +423,8 @@ class ReportTest(unittest.TestCase):
 
         r.delete_multiple_instances(update_counters=False)
 
+        self.assertEqual([], r.fetch_tags_sample())
+
         latest_instance_id = r.fetch_latest_instance_id()
         self.assertIsNone(latest_instance_id)
         self.assertFalse(r.fetch_instances())
@@ -429,6 +444,11 @@ class ReportTest(unittest.TestCase):
                                           before=all_ris[-1].report_instance_id,
                                           use_insertion_datetime=use_insertion_datetime)
         self.assertEqual(8, num)
+
+        self.assertEqual(['t1', 't2'], r.fetch_tags_sample())
+        self.assertEqual(['t1', 't2'], r.fetch_tags_sample(tag_prefix='t'))
+        self.assertEqual(['t1'], r.fetch_tags_sample(tag_prefix='t1'))
+
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 9'.split(), [ri['input_string'] for ri in all_ris])
         days = r.fetch_days()
@@ -454,6 +474,9 @@ class ReportTest(unittest.TestCase):
         num = r.delete_multiple_instances(['t2'], from_dt=utcnow()-datetime.timedelta(days=400),
                                           to_dt=utcnow()-datetime.timedelta(days=13))
         self.assertEqual(1, num)
+
+        self.assertEqual(['t1', 't2'], r.fetch_tags_sample())
+
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 1 2 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
 
@@ -472,6 +495,9 @@ class ReportTest(unittest.TestCase):
                                           to_dt=utcnow()-datetime.timedelta(days=1),
                                           use_insertion_datetime=True)
         self.assertEqual(0, num)
+
+        self.assertEqual(['t1', 't2'], r.fetch_tags_sample())
+
         all_ris = r.fetch_instances()
         self.assertEqual('-1 0 1 2 3 4 5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
 
@@ -485,10 +511,13 @@ class ReportTest(unittest.TestCase):
     def test_delete_multiple_instances_delete_by_dts_no_tags(self):
         r, all_ris = self.create_multi_day_report()
         r.process_input('8')
-        r.process_input('9')
+        r.process_input('9', tags=['t3'])
         all_ris = r.fetch_instances()
         num = r.delete_multiple_instances([], to_dt=utcnow()-datetime.timedelta(days=100))
         self.assertEqual(6, num)
+
+        self.assertEqual(['t1', 't2', 't3'], r.fetch_tags_sample())
+
         all_ris = r.fetch_instances()
         self.assertEqual('5 6 7 8 9'.split(), [ri['input_string'] for ri in all_ris])
 

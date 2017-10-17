@@ -476,14 +476,15 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
                                WHERE owner_id=?""",
                             [total_diskspace, owner_id])
 
+
             ### Delete days for which report instances no longer exist
 
-            for tags, day in tags_days:
+            for day_tags, day in tags_days:
                 cur.execute("""SELECT report_instance_id FROM report_instance
                                WHERE report_id=? AND tags=? AND 
                                report_instance_id > ? AND report_instance_id < ?
                                LIMIT 1""",
-                            [report_id, list(tags),
+                            [report_id, list(day_tags),
                              util.min_uuid_with_dt(datetime.datetime.combine(day,
                                                             datetime.datetime.min.time())),
                              util.max_uuid_with_dt(datetime.datetime.combine(day,
@@ -491,7 +492,27 @@ class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
                 if not cur.fetchall():
                     cur.execute("""DELETE FROM report_instance_day
                                    WHERE report_id=? AND tags=? AND day=?""",
-                                [report_id, list(tags), day])
+                                [report_id, list(day_tags), day])
+
+
+            ### Delete tags for which report instances no longer exist
+
+            tags_present = set()
+            for tags, _ in tags_days:
+                for tag in tags:
+                    tags_present.add(tag)
+
+            for tag in tags_present:
+                cur.execute("""SELECT report_id FROM report_instance_day
+                               WHERE report_id=? AND tags=?
+                               LIMIT 1""",
+                            [report_id, [tag]])
+                if cur.fetchall():
+                    continue
+                cur.execute("""DELETE FROM report_tag
+                               WHERE report_id=? AND tag=?""",
+                            [report_id, tag])
+
 
             return len(ris), [list(ts) for ts in all_tags_subsets]
 
