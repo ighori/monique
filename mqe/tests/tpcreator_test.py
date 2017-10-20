@@ -13,6 +13,7 @@ from mqe import util
 from mqe import layouts
 from mqe.layouts import Layout
 from mqe import reports
+from mqe import sscreator
 
 from mqe.tests.tutil import new_report_data, patch
 
@@ -538,6 +539,59 @@ class TPCreatorTest(unittest.TestCase):
         self.assertEqual(3, len(layout.layout_dict))
         self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']], sorted(tile.tags for tile in layout.tile_dict))
 
+    @unittest.skip('Failing test - tpcreator_mod and sscreator_mod do not work together.')
+    def test_tpcreator_mod_with_sscreator_mod(self):
+        owner_id = uuid.uuid4()
+        dashboard_id = uuid.uuid4()
+
+        tile_config = {
+            'tags': ['p1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'p1:10', 'prefix': 'p1:'}],
+                'sscs': dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            }
+        }
+        r = reports.Report.insert(owner_id, 'r')
+        master_tile = Tile.insert(owner_id, r.report_id, dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+
+        r.process_input('0', tags=['p1:10'])
+        r.process_input('0', tags=['p1:11'])
+
+        ri1 = r.process_input('0\n1\n2', tags=['p1:10'],
+                              handle_tpcreator=False, handle_sscreator=False).report_instance
+        ri2 = r.process_input('0\n1\n2', tags=['p1:12'],
+                              handle_tpcreator=False, handle_sscreator=False).report_instance
+        layout_rows_tpcreator = c.dao.LayoutDAO.select_layout_by_report_multi(
+            owner_id, r.report_id, [], 'tpcreator', 100)
+        layout_rows_sscreator = c.dao.LayoutDAO.select_layout_by_report_multi(
+            owner_id, r.report_id, [], 'sscs', 100)
+        mods = [sscreator.sscreator_mod(ri1, layout_rows_sscreator[0]),
+                sscreator.sscreator_mod(ri2, layout_rows_sscreator[0]),
+                tpcreator.tpcreator_mod(ri1, layout_rows_tpcreator[0]),
+                tpcreator.tpcreator_mod(ri2, layout_rows_tpcreator[0])]
+        layouts.apply_mods(mods, owner_id, dashboard_id, None)
+
+        layout = Layout.select(owner_id, dashboard_id)
+        self.assertEqual(3, len(layout.layout_dict))
+        self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']],
+                         sorted(tile.tags for tile in layout.tile_dict))
+        #for tile in layout.tile_dict:
+        #    self.assertEqual(3, len(tile.series_specs()))
+
+        ri3 = r.process_input('0\n1\n2', tags=['p1:12'],
+                              handle_tpcreator=False, handle_sscreator=False).report_instance
+        mods = [sscreator.sscreator_mod(ri3, layout_rows_sscreator[0]),
+                tpcreator.tpcreator_mod(ri3, layout_rows_tpcreator[0])]
+        layouts.apply_mods(mods, owner_id, dashboard_id, None)
+
+        layout = Layout.select(owner_id, dashboard_id)
+        self.assertEqual(3, len(layout.layout_dict))
+        self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']],
+                         sorted(tile.tags for tile in layout.tile_dict))
 
 
 
