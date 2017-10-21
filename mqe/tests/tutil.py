@@ -80,6 +80,11 @@ class ReportData(object):
         items = layouts._sort_layout_items(layout.layout_dict, 'y')
         return [Tile.select(self.dashboard_id, tile_id) for tile_id, vo in items]
 
+    def get_tile_by_tags(self, tags):
+        for tile in self.layout().tile_dict:
+            if tile.tags == tags:
+                return tile
+        return None
 
 
 class CustomData(object):
