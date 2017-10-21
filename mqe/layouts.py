@@ -254,7 +254,7 @@ def detach_tile(tile, for_layout_id=None):
     """
     return replace_tiles({tile: None}, for_layout_id)
 
-def repack(owner_id, dashboard_id, for_layout_id=None):
+def repack(owner_id, dashboard_id, for_layout_id=None, put_master_first=True):
     """Compress the layout definition by removing free space present between tiles and
     group tpcreated tiles. The operation preserves the order of regular tiles. The
     tpcreated tiles are sorted by tag values.
@@ -265,10 +265,13 @@ def repack(owner_id, dashboard_id, for_layout_id=None):
         :attr:`~mqe.layouts.Layout.layout_id`, possibly making multiple tries. Otherwise,
         perform the operation only if the current :attr:`~mqe.layouts.Layout.layout_id`
         matches the parameter
+    :param bool put_master_first: whether a master tile should be placed just before the
+        tiles tpcreated from it. If ``False``, a master tile is treated as tiles
+        tpcreated from it and its position depends on a sort key computed from its tags
     :return: a :class:`LayoutModificationResult` if the operation was successful, ``None``
         otherwise.
     """
-    mods = [repack_mod()]
+    mods = [repack_mod(put_master_first=put_master_first)]
     return apply_mods(mods, owner_id, dashboard_id, for_layout_id)
 
 
@@ -707,7 +710,7 @@ class TagsSortKey(object):
 DEFAULT_TAGS_SORT_KEY = TagsSortKey([])
 
 
-def repack_mod():
+def repack_mod(put_master_first=True):
     """A mod compressing and re-sorting the layout. See :func:`repack`.
     """
 
@@ -716,9 +719,14 @@ def repack_mod():
         tile_id_to_index = {item[0]: i for i, item in enumerate(layout_dict_items)}
 
         def key((tile_id, vo)):
-            """Returns (master_pos, (num_keys_tuple, str_keys_tuple))"""
+            """Returns (master_pos, tags_sort_key)"""
             props = layout_mod.layout.get_tile_props(tile_id)
-            master_id = props.get('master_id') if props else None
+            master_id = None
+            if props:
+                master_id = props.get('master_id')
+                if not master_id and not put_master_first and props.get('is_master'):
+                    master_id = tile_id
+
             if not master_id:
                 return (tile_id_to_index[tile_id], DEFAULT_TAGS_SORT_KEY)
             if master_id not in tile_id_to_index:

@@ -35,22 +35,25 @@ report_instances_data = {
 }
 
 class ReportData(object):
-    """A class holding a set of objects needed to create a dashboard - a report, an owner id etc. The ``name`` parameter must be a key in the global ``report_instances_data`` dict."""
+    """A class holding a set of objects needed to create a dashboard - a report, an owner id etc.
+    If the ``report_name`` parameter is a key present in the global ``report_instances_data`` dict,
+    report instances will be created from data present in the dict.
+    """
 
-    def __init__(self, name, tags=[]):
-        assert name in report_instances_data
-
-        self.name = name
+    def __init__(self, report_name, tags=[]):
+        self.report_name = report_name
         self.tags = tags
         self.owner_id = uuid.uuid1()
         self.dashboard_id = uuid.uuid1()
-        self.report = reports.Report.select_or_insert(self.owner_id, name)
+        self.report = reports.Report.select_or_insert(self.owner_id, report_name)
+        self.report_id = self.report.report_id
         self.instances = []
 
-        for data in report_instances_data[self.name]:
-            ipres = self.report.process_input(json.dumps(data), tags=self.tags)
-            assert ipres.report_instance is not None
-            self.instances.append(ipres.report_instance)
+        if self.report_name in report_instances_data:
+            for data in report_instances_data[self.report_name]:
+                ipres = self.report.process_input(json.dumps(data), tags=self.tags)
+                assert ipres.report_instance is not None
+                self.instances.append(ipres.report_instance)
 
     def only_tile_from_layout(self):
         layout = layouts.Layout.select(self.owner_id, self.dashboard_id)
@@ -71,6 +74,12 @@ class ReportData(object):
         tile = Tile.select(self.dashboard_id, ids[idx])
         assert tile
         return tile
+
+    def tiles_sorted_by_vo(self):
+        layout = self.layout()
+        items = layouts._sort_layout_items(layout.layout_dict, 'y')
+        return [Tile.select(self.dashboard_id, tile_id) for tile_id, vo in items]
+
 
 
 class CustomData(object):

@@ -5,8 +5,12 @@ from copy import deepcopy
 
 from mqe import layouts
 from mqe.layouts import place_tile, detach_tile, Layout, repack
+from mqe import dataseries
+from mqe.tiles import Tile
+from mqe import tpcreator
+from mqe import c
 
-from mqe.tests.tutil import call
+from mqe.tests.tutil import call, ReportData
 from mqe.tests import tiles_test
 
 
@@ -227,6 +231,60 @@ class TilePlacingDetachingTest(unittest.TestCase):
         res = layout2_reselected.set(tiles[0].owner_id, tiles[0].dashboard_id,
                                      layout2.layout_id)
         self.assertIsNone(res)
+
+
+class RepackTest(unittest.TestCase):
+
+    def test_no_repack(self):
+        tile_config = {
+            'tags': ['p1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'p1:10', 'prefix': 'p1:'}],
+            }
+        }
+        rd = ReportData('r')
+        master_tile = Tile.insert(rd.owner_id, rd.report_id, rd.dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+
+        ri1 = rd.report.process_input('0', tags=['p1:8'], handle_tpcreator=False).report_instance
+        ri2 = rd.report.process_input('0', tags=['p1:12'],
+                                      handle_tpcreator=False).report_instance
+        ri3 = rd.report.process_input('0', tags=['p1:6'],
+                                     handle_tpcreator=False).report_instance
+
+        layout_rows_tpcreator = c.dao.LayoutDAO.select_layout_by_report_multi(
+            rd.owner_id, rd.report_id, [], 'tpcreator', 100)
+        mods = [
+            tpcreator.tpcreator_mod(ri1, layout_rows_tpcreator[0]),
+            tpcreator.tpcreator_mod(ri2, layout_rows_tpcreator[0]),
+            tpcreator.tpcreator_mod(ri3, layout_rows_tpcreator[0]),
+        ]
+        layouts.apply_mods(mods, rd.owner_id, rd.dashboard_id, None)
+
+        self.assertEqual([['p1:10'], ['p1:8'], ['p1:12'], ['p1:6']],
+                         [tile.tags for tile in rd.tiles_sorted_by_vo()])
+
+        return rd
+
+    def test_repack(self):
+        rd = self.test_no_repack()
+
+        layouts.apply_mods([layouts.repack_mod()], rd.owner_id, rd.dashboard_id, None)
+
+        self.assertEqual([['p1:10'], ['p1:6'], ['p1:8'], ['p1:12']],
+                         [tile.tags for tile in rd.tiles_sorted_by_vo()])
+
+    def test_repack_dont_put_master_first(self):
+        rd = self.test_no_repack()
+
+        layouts.apply_mods([layouts.repack_mod(put_master_first=False)],
+                           rd.owner_id, rd.dashboard_id, None)
+
+        self.assertEqual([['p1:6'], ['p1:8'], ['p1:10'], ['p1:12']],
+                         [tile.tags for tile in rd.tiles_sorted_by_vo()])
 
 
 class LayoutModuleTest(unittest.TestCase):
