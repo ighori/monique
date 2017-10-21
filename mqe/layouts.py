@@ -1,7 +1,6 @@
 import logging
-from copy import deepcopy
-import sys
 import re
+from collections import defaultdict
 
 from mqe import util
 from mqe.util import try_complete, NotCompleted
@@ -523,7 +522,7 @@ def place_tile_mod(tile, size_of=None, initial_visual_options=None):
     return do_place_tile
 
 
-def replace_tiles_mod(old_to_new_tile_dict, sync_tpcreated=True):
+def replace_tiles_mod(old_to_new_tile_dict, sync_tpcreated=True, do_repacking=True):
     """A layout mod replacing tiles. See :func:`place_tile` for a description of parameters."""
 
     from mqe import tpcreator
@@ -573,6 +572,9 @@ def replace_tiles_mod(old_to_new_tile_dict, sync_tpcreated=True):
             if new_tile:
                 layout_dict[new_tile.tile_id] = layout_dict[old_tile.tile_id]
             del layout_dict[old_tile.tile_id]
+
+        if not do_repacking:
+            return
 
         # repack layout if deletes of master or tpcreated tiles were made,
         # pack upwards if regular deletes were made
@@ -752,6 +754,52 @@ def repack_mod(put_master_first=True):
         layout_mod.layout.layout_dict = res
 
     return do_repack
+
+
+def promote_first_as_master_mod():
+    """A layout mod that makes the first tpcreated tile (wrt. tags sorting order) a new master.
+    The old master is downgraded to a tpcreated tile of the new master. You probably want
+    to call :meth:`tpcreator_mod` after calling this mod to resort the tiles.
+    """
+
+    def do_promote_first_as_master_mod(layout_mod):
+        from mqe import tpcreator
+
+        layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
+        by_master_id = defaultdict(list)
+        for tile_id, vo in layout_dict_items:
+            props = layout_mod.layout.get_tile_props(tile_id)
+            if not props:
+                continue
+            master_id = props.get('master_id')
+            if not master_id and props.get('is_master'):
+                master_id = tile_id
+            if not master_id:
+                continue
+            by_master_id[master_id].append(tile_id)
+
+        tile_repl = {}
+        for master_id, tile_id_list in by_master_id.items():
+            if tile_id_list[0] != master_id and master_id in layout_mod.layout.layout_dict:
+                old_master = Tile.select(layout_mod.layout.dashboard_id, master_id)
+                if not old_master:
+                    continue
+                new_chosen_master = Tile.select(layout_mod.layout.dashboard_id, tile_id_list[0])
+                if not new_chosen_master:
+                    continue
+                new_master = tpcreator.make_master_from_tpcreated(old_master, new_chosen_master)
+                old_master_repl = tpcreator.make_tpcreated_from_master(old_master, new_master)
+                tile_repl.update({old_master: new_master,
+                                  new_chosen_master: old_master_repl})
+
+        if not tile_repl:
+            return
+
+        replace_tiles_mod(tile_repl, do_repacking=False)(layout_mod)
+
+
+    return do_promote_first_as_master_mod
+
 
 
 def if_mod(condition, mod):

@@ -297,6 +297,20 @@ def make_master_from_tpcreated(old_master, tpcreated):
     return Tile.insert_with_tile_options(old_master.dashboard_id, new_master_to)
 
 
+def make_tpcreated_from_master(old_master, new_master):
+    """Downgrades the master |Tile| ``old_master`` to a tpcreated tile of the
+    |Tile| ``new_master``.
+    """
+    assert old_master.is_master_tile()
+    assert new_master.is_master_tile()
+
+    tpcreator_spec = tpcreator_spec_from_tpcreator_uispec(
+        new_master.tile_options['tpcreator_uispec'])
+    to = _tile_options_of_tpcreated(new_master, tpcreator_spec, old_master.tags)
+    return Tile.insert_with_tile_options(old_master.dashboard_id, to)
+
+
+
 def synchronize_sizes_of_tpcreated_mod(master_tile):
     """A layout mod the synchronizes sizes of tpcreated tiles"""
     def do_synchronize(layout_mod):

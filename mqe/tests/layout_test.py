@@ -10,7 +10,7 @@ from mqe.tiles import Tile
 from mqe import tpcreator
 from mqe import c
 
-from mqe.tests.tutil import call, ReportData
+from mqe.tests.tutil import call, ReportData, enable_logging
 from mqe.tests import tiles_test
 
 
@@ -285,6 +285,30 @@ class RepackTest(unittest.TestCase):
 
         self.assertEqual([['p1:6'], ['p1:8'], ['p1:10'], ['p1:12']],
                          [tile.tags for tile in rd.tiles_sorted_by_vo()])
+
+        self.assertFalse(rd.tiles_sorted_by_vo()[0].is_master_tile())
+        self.assertTrue(rd.tiles_sorted_by_vo()[2].is_master_tile())
+
+        return rd
+
+    def test_promote_first_as_master(self):
+        rd = self.test_repack_dont_put_master_first()
+
+        layouts.apply_mods([layouts.promote_first_as_master_mod(),
+                            layouts.repack_mod()],
+                           rd.owner_id, rd.dashboard_id, None)
+
+        #for tile in rd.tiles_sorted_by_vo():
+        #    print tile.tile_id, tile.tags, tile.get_master_tile_id()
+
+        self.assertEqual([['p1:6'], ['p1:8'], ['p1:10'], ['p1:12']],
+                         [tile.tags for tile in rd.tiles_sorted_by_vo()])
+
+        first_tile = rd.tiles_sorted_by_vo()[0]
+        self.assertTrue(first_tile.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo()[1:]:
+            self.assertFalse(tile.is_master_tile())
+            self.assertEqual(first_tile.tile_id, tile.get_master_tile_id())
 
 
 class LayoutModuleTest(unittest.TestCase):
