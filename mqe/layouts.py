@@ -683,7 +683,13 @@ class TagsSortKey(object):
         self.tokens = []
 
         for tag in tags:
-            parts = self.re_number.split(tag)
+            prop_items = tag.split(':')
+            self.tokens.append(prop_items[0])
+
+            if len(prop_items) == 1 or not prop_items[1]:
+                continue
+
+            parts = self.re_number.split(prop_items[1])
             for part in parts:
                 if not part:
                     continue

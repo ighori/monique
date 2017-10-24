@@ -307,6 +307,56 @@ class TPCreatorTest(unittest.TestCase):
         tags_lists = [tile.tags for tile in tiles]
         self.assertEqual([['server:web.1'], ['server:web.2'], ['server:worker.1']], tags_lists)
 
+    def test_layout_sorting_complex_tag_names_3(self):
+        owner_id = uuid.uuid4()
+        dashboard_id = uuid.uuid4()
+        rep = reports.Report.insert(owner_id, 'r')
+        tile_config = {
+            'tags': ['server:web.1'],
+            'series_spec_list': [dataseries.SeriesSpec(0, -1, {'op': 'eq', 'args': '0'})],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'server:web.1', 'prefix': ''}]
+            }
+        }
+        master_tile = Tile.insert(owner_id, rep.report_id, dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+
+        rep.process_input('1', tags=['server:worker.1'])
+        rep.process_input('1', tags=['server:web.2'])
+        rep.process_input('1', tags=['server:'])
+        rep.process_input('1', tags=['server'])
+        rep.process_input('1', tags=['server2'])
+        rep.process_input('1', tags=['server_2'])
+        rep.process_input('1', tags=['3server2'])
+        rep.process_input('1', tags=['tu1'])
+        rep.process_input('1', tags=['a1'])
+        rep.process_input('1', tags=['a1:web.10'])
+        rep.process_input('1', tags=['a1:web.1'])
+        rep.process_input('1', tags=['a1:web.1', 'serv:10'])
+        rep.process_input('1', tags=['a1:web.1', 'serv:2'])
+
+        layout = layouts.Layout.select(owner_id, dashboard_id)
+        tiles = sorted(layout.tile_dict, key=lambda tile: (layout.tile_dict[tile]['y'],
+                                                           layout.tile_dict[tile]['x']))
+        tags_lists = [tile.tags for tile in tiles]
+        expected = [
+            [u'server:web.1'],
+            [u'3server2'],
+            [u'a1'],
+            [u'server:'],
+            [u'server'],
+            [u'server2'],
+            [u'server_2'],
+            [u'tu1'],
+            [u'a1:web.1'],
+            [u'a1:web.10'],
+            [u'server:web.2'],
+            [u'server:worker.1'],
+            [u'a1:web.1', u'serv:2'],
+            [u'a1:web.1', u'serv:10']]
+
+        self.assertEqual(expected, tags_lists)
+
     def test_set_layout_fails(self):
         owner_id = uuid.uuid1()
         dashboard_id_1 = uuid.uuid1()
