@@ -350,10 +350,11 @@ class GetSeriesValuesTest(unittest.TestCase):
     def test_get_series_values_after(self):
         cd = CustomData(range(20), tags=['t1'])
 
-        def values(tags, after):
+        def values(tags, after, latest_instance_id=None):
             sd_id = dataseries.SeriesDef.select_id_or_insert(cd.report.report_id, tags, dataseries.guess_series_spec(cd.report, cd.instances[0], 0, 0))
             sd = dataseries.SeriesDef.select(cd.report.report_id, tags, sd_id)
-            res = dataseries.get_series_values_after(sd, cd.report, after)
+            res = dataseries.get_series_values_after(sd, cd.report, after,
+                                                     latest_instance_id=latest_instance_id)
             return [sv.value for sv in res]
 
         self.assertEqual(range(20), values(['t1'], MIN_UUID))
@@ -362,6 +363,20 @@ class GetSeriesValuesTest(unittest.TestCase):
         self.assertEqual([], values(['t2'], cd.instances[-2].report_instance_id))
         self.assertEqual([19], values(['t1'], cd.instances[-2].report_instance_id))
         self.assertEqual([], values([], cd.instances[-1].report_instance_id))
+
+        self.assertEqual(range(20), values(['t1'], MIN_UUID,
+            latest_instance_id=cd.instances[-1].report_instance_id))
+        self.assertEqual(range(20), values([], MIN_UUID,
+            latest_instance_id=cd.instances[-1].report_instance_id))
+        self.assertEqual(range(19), values([], MIN_UUID,
+                         latest_instance_id=cd.instances[-2].report_instance_id))
+
+        self.assertEqual([19], values([], cd.instances[-2].report_instance_id,
+                         latest_instance_id=cd.instances[-1].report_instance_id))
+        self.assertEqual([], values([], cd.instances[-2].report_instance_id,
+                                      latest_instance_id=cd.instances[-2].report_instance_id))
+        self.assertEqual([], values([], cd.instances[-2].report_instance_id,
+                                      latest_instance_id=cd.instances[-3].report_instance_id))
 
         cd.report.process_input('50', tags=['t1'], created=cd.instances[10].created - datetime.timedelta(microseconds=1))
         self.assertEqual(range(10) + [50] + range(10, 20), values([], MIN_UUID))

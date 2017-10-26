@@ -648,7 +648,8 @@ def get_series_values(series_def, report, from_dt, to_dt,
 
 
 def get_series_values_after(series_def, report, after,
-                            limit=mqeconfig.MAX_SERIES_POINTS_IN_TILE):
+                            limit=mqeconfig.MAX_SERIES_POINTS_IN_TILE,
+                            latest_instance_id=None):
     """Retrieves a list of :class:`SeriesValue` created after the specified report instance ID
     (``after``). The function inserts new data series values if they haven't been already created.
 
@@ -657,6 +658,9 @@ def get_series_values_after(series_def, report, after,
     :param ~uuid.UUID after: a ``report_instance_id`` that specifies the starting point to fetch
         (and possibly create) data series values.
     :param int limit: the limit of the series values to fetch/create
+    :param latest_instance_id: (optional) a latest report instance ID of the report and tags.
+        Passing this parameter ensures multiple calls of the functions for the same report
+        will return consistent data (ie. coming from the same report instances).
     :return: a list of :class:`SeriesValue` objects in the order of creation time of the corresponding report instances
     """
     if series_def['from_rid'] is None or series_def['to_rid'] is None:
@@ -667,7 +671,12 @@ def get_series_values_after(series_def, report, after,
         insert_after = series_def['to_rid']
     insert_series_values(series_def, report, None, None, after=insert_after)
 
-    rows = c.dao.SeriesValueDAO.select_multi(series_def.series_id, after, None, limit)
+    if latest_instance_id:
+        max_report_instance_id = util.uuid_for_next_dt(latest_instance_id)
+    else:
+        max_report_instance_id = None
+
+    rows = c.dao.SeriesValueDAO.select_multi(series_def.series_id, after, max_report_instance_id, limit)
     log.debug('Selected %d series_values after series_id=%s report_name=%r',
               len(rows), series_def.series_id, report.report_name)
     return list(reversed([SeriesValue(row) for row in rows]))

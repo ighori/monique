@@ -292,10 +292,8 @@ class TilewidgetForRange(Tilewidget):
         series_def_list = dataseries.SeriesDef.select_multi(
             self.tile.report_id,
             [(self.tile.tags, sc['series_id']) for sc in self.tile_options['series_configs']])
-        if not after:
-            latest_instance_id = self.tile.report.fetch_latest_instance_id(self.tile.tags)
-        else:
-            latest_instance_id = None
+
+        latest_instance_id = self.tile.report.fetch_latest_instance_id(self.tile.tags)
 
         for series_def, series_config in zip(series_def_list, self.tile_options['series_configs']):
             if not series_def:
@@ -310,7 +308,8 @@ class TilewidgetForRange(Tilewidget):
             else:
                 assert after is not None
                 rows = dataseries.get_series_values_after(series_def, self.tile.report,
-                            after, limit or mqeconfig.MAX_SERIES_POINTS_IN_TILE)
+                            after, limit or mqeconfig.MAX_SERIES_POINTS_IN_TILE,
+                            latest_instance_id=latest_instance_id)
 
             value_list = []
             common_header = CommonValue()
