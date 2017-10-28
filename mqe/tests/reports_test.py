@@ -622,6 +622,34 @@ class ReportTest(unittest.TestCase):
         reps = reports.fetch_reports_by_name(owner_id, '')
         self.assertEqual([r3], reps)
 
+    def test_custom_get_parsing_result_desc(self):
+        old = mqeconfig.get_parsing_result_desc
+        try:
+            def get_parsing_result_desc(parsing_result, table):
+                res = {'num_rows': table.num_rows}
+                if parsing_result.input_type == 'single':
+                    res['input_is_json'] = True
+                return res
+            mqeconfig.get_parsing_result_desc = get_parsing_result_desc
+
+            owner_id = uuid.uuid1()
+            r = Report.insert(owner_id, 'r')
+
+            r.process_input('1\n2\n3\n')
+            ri = r.fetch_instances(order='desc', limit=1)[0]
+            self.assertEqual(3, ri.parsing_result_desc['num_rows'])
+            self.assertEqual(None, ri.parsing_result_desc.get('input_is_json'))
+
+            r.process_input('1\n2\n', input_type='single')
+            ri = r.fetch_instances(order='desc', limit=1)[0]
+            self.assertEqual(1, ri.parsing_result_desc['num_rows'])
+            self.assertEqual(True, ri.parsing_result_desc.get('input_is_json'))
+
+        finally:
+            mqeconfig.get_parsing_result_desc = old
+
+
+
 class ReportsModuleTest(unittest.TestCase):
 
     def test_fetch_reports_by_name(self):

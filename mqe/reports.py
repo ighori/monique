@@ -50,7 +50,11 @@ class ReportInstance(Row):
     def parsing_result_desc(self):
         """Extra description of the parsed table - a dictionary possibly containing the keys:
 
-        * ``input_is_json`` - set to ``True`` if the input string was a JSON document"""
+        * ``input_is_json`` - set to ``True`` if the input string was a JSON document.
+
+        Other custom keys can be set by using the hook
+        :func:`mqeconfig.get_parsing_result_desc`.
+        """
         return self.ri_data.get('result_desc', {})
 
     def _rows_result(self, rows):
@@ -218,7 +222,7 @@ class Report(Row):
         ri_data_dict = {
             'table': table,
         }
-        result_desc = self._get_result_desc(parsing_result)
+        result_desc = self._get_result_desc(parsing_result, table)
         if result_desc:
             ri_data_dict['result_desc'] = result_desc
 
@@ -249,12 +253,18 @@ class Report(Row):
 
         return InputProcessingResult(report_instance, parsing_result)
 
-    def _get_result_desc(self, parsing_result):
+    def _get_result_desc(self, parsing_result, table):
         res = {}
+
         if parsing_result.best_input_parser:
             if isinstance(parsing_result.best_input_parser, (basicparsing.JsonParser,
                                                              basicparsing.JsonDeepParser)):
                 res['input_is_json'] = True
+
+        user_desc = mqeconfig.get_parsing_result_desc(parsing_result, table)
+        if user_desc:
+            res.update(user_desc)
+
         return res
 
     def _min_max_uuid_from_args(self, from_dt, to_dt, before, after):

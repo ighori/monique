@@ -54,11 +54,21 @@ MAX_TAGS = 3
 def get_table_from_parsing_result(parsing_result):
     """The function enables custom postprocessing of parsed tables. It must return an
     :class:`mqetables.enrichment.EnrichedTable` based on a :class:`mqetables.parseany.ParsingResult`.
-    The returned table will be saved into the database as a report instance data.
+    The returned table will be saved into the database as report instance data.
     If ``None`` will be returned, the report instance will not be created.
     """
     return parsing_result.table
 
+
+def get_parsing_result_desc(parsing_result, table):
+    """Set custom :attr:`.ReportInstance.parsing_result_desc` for a
+    :class:`mqetables.parseany.ParsingResult` and an :class:`mqetables.enrichment.EnrichedTable`
+    returned by :func:`get_table_from_parsing_result`. The return value must be a JSON-serializable dict.
+
+    The function enables associating custom meta data with report instances and overriding the
+    auto-computed attribute ``input_is_json``.
+    """
+    return {}
 
 
 ### Other limits
