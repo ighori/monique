@@ -186,7 +186,7 @@ class Tilewidget(object):
     def get_series_configs(self, series_spec_list):
         raise NotImplementedError()
 
-    def get_tile_data(self, limit=None):
+    def get_tile_data(self, limit=None, fetch_params={}):
         """Called by :meth:`~mqe.tiles.Tile.get_tile_data`"""
         data = {}
 
@@ -202,7 +202,7 @@ class Tilewidget(object):
 
         data['series_data'] = []
 
-        self.fill_tile_data(data, limit=limit)
+        self.fill_tile_data(data, limit=limit, fetch_params=fetch_params)
 
         if data['series_data']:
             data['common_header'] = util.common_value(sd['common_header'] for sd in data['series_data']
@@ -219,25 +219,26 @@ class Tilewidget(object):
 
         return data
 
-    def fill_tile_data(self, tile_data, limit):
+    def fill_tile_data(self, tile_data, limit, fetch_params):
         """The method is called to fill the full ``tile_data`` dict. At least the
         :attr:`tile_data.series_data` must be filled."""
         raise NotImplementedError()
 
-    def get_new_tile_data(self, after_report_instance_id, limit=None):
+    def get_new_tile_data(self, after_report_instance_id, limit=None, fetch_params={}):
         """Called by :meth:`~mqe.tiles.Tile.get_new_tile_data`"""
         data = {}
 
         data['series_data'] = []
 
-        self.fill_new_tile_data(data, after_report_instance_id, limit)
+        self.fill_new_tile_data(data, after_report_instance_id, limit, fetch_params={})
 
         drawer = create_drawer(self)
         drawer.process_tile_data(data)
         drawer.process_new_tile_data(data)
         return data
 
-    def fill_new_tile_data(self, new_tile_data, after_report_instance_id, limit=None):
+    def fill_new_tile_data(self, new_tile_data, after_report_instance_id, limit=None,
+                           fetch_params={}):
         """The method is called to fill the partial ``new_tile_data`` dict. At least the
         :attr:`tile_data.series_data` must be filled."""
         raise NotImplementedError()
@@ -325,7 +326,7 @@ class TilewidgetForRange(Tilewidget):
                 'common_header': common_header.value,
             })
 
-    def fill_tile_data(self, data, limit):
+    def fill_tile_data(self, data, limit, fetch_params={}):
         now = datetime.datetime.utcnow()
         data['fetched_from_dt'] = now - datetime.timedelta(seconds=self.tile_options['seconds_back'])
         data['fetched_to_dt'] = now
@@ -333,7 +334,7 @@ class TilewidgetForRange(Tilewidget):
         self._set_series_data(data, from_dt=data['fetched_from_dt'], to_dt=data['fetched_to_dt'],
                               limit=limit)
 
-    def fill_new_tile_data(self, data, after_report_instance_id, limit=None):
+    def fill_new_tile_data(self, data, after_report_instance_id, limit=None, fetch_params={}):
         if not after_report_instance_id:
             after_report_instance_id = util.min_uuid_with_dt(
                 datetime.datetime.utcnow() - \
@@ -394,13 +395,14 @@ class TilewidgetForSingle(Tilewidget):
             return None
         return self.tile.report.fetch_single_instance(report_instance_id, tags)
 
-    def fill_tile_data(self, data, limit):
+    def fill_tile_data(self, data, limit, fetch_params={}):
         ri = self._fetch_ri()
         if not ri:
             return
         self._set_series_data(data, ri)
 
-    def fill_new_tile_data(self, data, after_report_instance_id, limit=None):
+    def fill_new_tile_data(self, data, after_report_instance_id, limit=None,
+                           fetch_params={}):
         ri = self._fetch_ri()
         if not ri:
             return

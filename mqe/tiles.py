@@ -254,12 +254,12 @@ class Tile(Row):
                                          (d['tag'], d['prefix']))
 
 
-    def get_tile_data(self, limit=None):
+    def get_tile_data(self, limit=None, fetch_params={}):
         """Returns :attr:`tile_data` based on the tile's :attr:`tile_options`, possibly
         limiting the number of returned data points for each data series"""
-        return self.tilewidget.get_tile_data(limit=limit)
+        return self.tilewidget.get_tile_data(limit=limit, fetch_params=fetch_params)
 
-    def get_new_tile_data(self, after_report_instance_id, limit=None):
+    def get_new_tile_data(self, after_report_instance_id, limit=None, fetch_params={}):
         """Returns partial :attr:`tile_data` that can be merged into previously retrieved
         full :attr:`tile_data`. The :attr:`tile_data.series_data` is retrieved for
         report instances created after the specified report instance ID.
@@ -269,7 +269,8 @@ class Tile(Row):
 
         The returned dict contains the following keys: :attr:`tile_data.series_data`,
         :attr:`tile_data.extra_options`, :attr:`tile_data.series_data_as_rows`."""
-        return self.tilewidget.get_new_tile_data(after_report_instance_id, limit)
+        return self.tilewidget.get_new_tile_data(after_report_instance_id=after_report_instance_id,
+                                                 limit=limit, fetch_params=fetch_params)
 
     @staticmethod
     def from_rawjson(obj):
