@@ -306,6 +306,14 @@ class GetNewDataTest(unittest.TestCase):
         self.assertEqual(265, data['series_data'][0]['data_points'][1].value)
         self.assertEqual(128, data['series_data'][1]['data_points'][0].value)
 
+        data = tile.get_new_tile_data(rd.instances[-4].report_instance_id, limit=1)
+        self.assertIn('extra_options', data)
+        self.assertEqual(2, len(data['series_data']))
+        self.assertEqual(1, len(data['series_data'][0]['data_points']))
+        self.assertEqual(1, len(data['series_data'][1]['data_points']))
+        self.assertEqual(265, data['series_data'][0]['data_points'][0].value)
+        self.assertEqual(128, data['series_data'][1]['data_points'][0].value)
+
         self.assertEqual(tile.get_new_tile_data(util.min_uuid_with_dt(
             rd.instances[0].created)), tile.get_new_tile_data(None))
 
@@ -403,6 +411,12 @@ class GetNewDataTest(unittest.TestCase):
         self.assertEqual(128, data['series_data'][1]['data_points'][0].value)
 
         data = tile.get_new_tile_data(rd.instances[-3].report_instance_id)
+        self.assertIn('extra_options', data)
+        self.assertEqual(2, len(data['series_data']))
+        self.assertEqual([], data['series_data'][0]['data_points'])
+        self.assertEqual(128, data['series_data'][1]['data_points'][0].value)
+
+        data = tile.get_new_tile_data(rd.instances[-3].report_instance_id, limit=1)
         self.assertIn('extra_options', data)
         self.assertEqual(2, len(data['series_data']))
         self.assertEqual([], data['series_data'][0]['data_points'])

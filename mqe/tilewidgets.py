@@ -224,20 +224,20 @@ class Tilewidget(object):
         :attr:`tile_data.series_data` must be filled."""
         raise NotImplementedError()
 
-    def get_new_tile_data(self, after_report_instance_id):
+    def get_new_tile_data(self, after_report_instance_id, limit=None):
         """Called by :meth:`~mqe.tiles.Tile.get_new_tile_data`"""
         data = {}
 
         data['series_data'] = []
 
-        self.fill_new_tile_data(data, after_report_instance_id)
+        self.fill_new_tile_data(data, after_report_instance_id, limit)
 
         drawer = create_drawer(self)
         drawer.process_tile_data(data)
         drawer.process_new_tile_data(data)
         return data
 
-    def fill_new_tile_data(self, new_tile_data, after_report_instance_id):
+    def fill_new_tile_data(self, new_tile_data, after_report_instance_id, limit=None):
         """The method is called to fill the partial ``new_tile_data`` dict. At least the
         :attr:`tile_data.series_data` must be filled."""
         raise NotImplementedError()
@@ -333,12 +333,12 @@ class TilewidgetForRange(Tilewidget):
         self._set_series_data(data, from_dt=data['fetched_from_dt'], to_dt=data['fetched_to_dt'],
                               limit=limit)
 
-    def fill_new_tile_data(self, data, after_report_instance_id):
+    def fill_new_tile_data(self, data, after_report_instance_id, limit=None):
         if not after_report_instance_id:
             after_report_instance_id = util.min_uuid_with_dt(
                 datetime.datetime.utcnow() - \
                 datetime.timedelta(seconds=self.tile_options['seconds_back']))
-        self._set_series_data(data, after=after_report_instance_id)
+        self._set_series_data(data, after=after_report_instance_id, limit=limit)
 
 
 class TilewidgetForSingle(Tilewidget):
@@ -400,7 +400,7 @@ class TilewidgetForSingle(Tilewidget):
             return
         self._set_series_data(data, ri)
 
-    def fill_new_tile_data(self, data, after_report_instance_id):
+    def fill_new_tile_data(self, data, after_report_instance_id, limit=None):
         ri = self._fetch_ri()
         if not ri:
             return

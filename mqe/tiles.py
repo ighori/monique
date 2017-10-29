@@ -259,13 +259,17 @@ class Tile(Row):
         limiting the number of returned data points for each data series"""
         return self.tilewidget.get_tile_data(limit=limit)
 
-    def get_new_tile_data(self, after_report_instance_id):
+    def get_new_tile_data(self, after_report_instance_id, limit=None):
         """Returns partial :attr:`tile_data` that can be merged into previously retrieved
         full :attr:`tile_data`. The :attr:`tile_data.series_data` is retrieved for
-        report instances created after the specified report instance ID. The returned dict
-        contains the following keys: :attr:`tile_data.series_data`,
+        report instances created after the specified report instance ID.
+
+        The limit of the number of returned data points for each data series can be
+        set using the ``limit`` argument.
+
+        The returned dict contains the following keys: :attr:`tile_data.series_data`,
         :attr:`tile_data.extra_options`, :attr:`tile_data.series_data_as_rows`."""
-        return self.tilewidget.get_new_tile_data(after_report_instance_id)
+        return self.tilewidget.get_new_tile_data(after_report_instance_id, limit)
 
     @staticmethod
     def from_rawjson(obj):
