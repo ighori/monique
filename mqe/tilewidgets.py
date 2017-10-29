@@ -396,7 +396,8 @@ class TilewidgetForSingle(Tilewidget):
         return self.tile.report.fetch_single_instance(report_instance_id, tags)
 
     def fill_tile_data(self, data, limit, fetch_params={}):
-        ri = self._fetch_ri()
+        rid = fetch_params.get('fetch_report_instance_id')
+        ri = self._fetch_ri(rid)
         if not ri:
             return
         self._set_series_data(data, ri)

@@ -118,9 +118,10 @@ class GetDataTest(unittest.TestCase):
             OrderedDict([('user_name', 'mike'), ('is_active', True), ('points', 32)]),
             OrderedDict([('user_name', 'robert3'), ('is_active', True), ('points', 210)]),
         ]
-        rd.report.process_input(json.dumps(d), tags=['ip:192.168.1.1'], extra_ri_data={'ed': 88})
+        pr1 = rd.report.process_input(json.dumps(d), tags=['ip:192.168.1.1'], extra_ri_data={'ed': 88})
 
         tile = rd.only_tile_from_layout()
+
         data = tile.get_tile_data()
 
         self.assertEqual('points (mike, nonexisting, robert3)', data['generated_tile_title'])
@@ -141,6 +142,22 @@ class GetDataTest(unittest.TestCase):
                 self.assertIsInstance(dp, tilewidgets.DataPoint)
         self.assertEqual(mqeconfig.DEFAULT_COLORS[:3], data['combined_colors'])
         self.assertEqual('points', data['common_header'])
+
+
+        # test fetch_params
+
+        d = [
+            OrderedDict([('user_name', 'mike'), ('is_active', True), ('points', 500)]),
+            OrderedDict([('user_name', 'robert3'), ('is_active', True), ('points', 510)]),
+        ]
+        pr2 = rd.report.process_input(json.dumps(d), tags=['ip:192.168.1.1'])
+        data = tile.get_tile_data()
+        self.assertEqual(500, data['series_data'][0]['data_points'][0].value)
+
+        data = tile.get_tile_data(fetch_params={'fetch_report_instance_id':
+                                                pr1.report_instance.report_instance_id})
+        self.assertEqual(32, data['series_data'][0]['data_points'][0].value)
+
 
         return tile
 

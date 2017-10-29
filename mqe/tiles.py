@@ -256,7 +256,14 @@ class Tile(Row):
 
     def get_tile_data(self, limit=None, fetch_params={}):
         """Returns :attr:`tile_data` based on the tile's :attr:`tile_options`, possibly
-        limiting the number of returned data points for each data series"""
+        limiting the number of returned data points for each data series.
+
+        Optional ``fetch_params`` (a dict) specify extra arguments customizing the fetched data.
+        Supported keys are:
+
+        - ``fetch_report_instance_id`` (supported by the ``Single`` tilewidget) - fetch data for the
+          specified report instance ID, instead of a newest report instance
+        """
         return self.tilewidget.get_tile_data(limit=limit, fetch_params=fetch_params)
 
     def get_new_tile_data(self, after_report_instance_id, limit=None, fetch_params={}):
