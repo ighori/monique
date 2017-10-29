@@ -17,6 +17,9 @@ from mqe.signals import fire_signal, new_report
 log = logging.getLogger('mqe.reports')
 
 
+DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE = 2000
+
+
 
 class ReportInstance(Row):
     """A representation of a report instance - tabular data associated with a
@@ -369,14 +372,28 @@ class Report(Row):
 
         min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
 
-        num, all_tags_subsets = c.dao.ReportInstanceDAO.delete_multi(self.owner_id,
-                                         self.report_id, tags, min_uuid, max_uuid, limit,
-                                         update_counters=update_counters,
-                                         use_insertion_datetime=use_insertion_datetime)
+        num_deleted = 0
+        tags_subsets_set = set()
+        while True:
+            max_to_delete = limit - num_deleted
+            if max_to_delete <= 0:
+                break
+            current_limit = min(max_to_delete, DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE)
+            num, tags_subsets = c.dao.ReportInstanceDAO.delete_multi(self.owner_id,
+                 self.report_id, tags, min_uuid, max_uuid, current_limit,
+                 update_counters=update_counters,
+                 use_insertion_datetime=use_insertion_datetime)
 
-        dataseries.clear_series_defs(self.report_id, all_tags_subsets)
+            for tags_subset in tags_subsets:
+                tags_subsets_set.add(tuple(tags_subset))
+            num_deleted += num
 
-        return num
+            if num == 0:
+                break
+
+        dataseries.clear_series_defs(self.report_id, [list(tags_subset)
+                                                      for tags_subset in tags_subsets_set])
+        return num_deleted
 
     def delete(self):
         """Delete the report. The method detaches and deletes tiles that display the report.
