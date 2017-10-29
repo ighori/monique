@@ -22,7 +22,7 @@
 
 The library uses a **table** with an optional header and tags as the base data structure. Each cell is a JSON-serializable value.
 
-Many inputs can be nicely represented as a table - SQL results, output of Unix utilities, or CSV files. The inputs already contain labels and headers that can be directly used as data series labels and chart titles.
+Many inputs can be nicely represented as a table - SQL results, output of Unix utilities, or CSV files. The inputs already contain labels and headers that can be directly used as data series labels and chart titles. Single numbers (i.e. metrics) are represented using single-cell tables.
 
 JSON files need a flattening algorithm, but the result can be quite natural. For example, a document
 
@@ -117,7 +117,11 @@ A lower-level API for managing [data series](http://monique-dashboards.readthedo
 
 ### Storing large amounts of data
 
-The library is designed with performance and scalability in mind. The overhead compared to using raw metrics is not big.
+The library is designed with performance and scalability in mind:
+- each data point is extracted lazily from a table only once
+- the data points forming a data series are fetched using a single database query
+- the Cassandra backend partitions data into reports, tags and days, allowing practically unlimited amounts of data to be stored
+
 
 ## How the library can be used
 
