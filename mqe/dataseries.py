@@ -617,24 +617,25 @@ def get_series_values(series_def, report, from_dt, to_dt,
     :param ~mqe.report.Report report: a report for which to get data
     :param ~datetime.datetime from_dt: starting datetime
     :param ~datetime.datetime to_dt: ending datetime
-    :param int limit: the limit of the series values to fetch/create
+    :param int limit: the limit of the series values to fetch. The limit of the series
+        values to create is set with :attr:`mqe.mqeconfig.MAX_SERIES_POINTS`.
     :param latest_instance_id: (optional) a latest report instance ID of the report and tags
         (if not passed, the value will be fetched)
     :return: a list of :class:`SeriesValue` objects in the order of creation time of the corresponding report instances
     """
     assert from_dt is not None and to_dt is not None
     if series_def.from_dt is None or series_def.to_dt is None:
-        insert_series_values(series_def, report, from_dt, to_dt, limit=limit)
+        insert_series_values(series_def, report, from_dt, to_dt)
     else:
         if from_dt < series_def.from_dt:
-            insert_series_values(series_def, report, from_dt, prev_dt(series_def.from_dt), limit=limit)
+            insert_series_values(series_def, report, from_dt, prev_dt(series_def.from_dt))
 
         if not latest_instance_id:
             latest_instance_id = report.fetch_latest_instance_id(series_def.tags)
         if latest_instance_id is not None \
                 and util.uuid_lt(series_def['to_rid'], latest_instance_id) \
                 and to_dt >= series_def.to_dt:
-            insert_series_values(series_def, report, None, None, after=series_def['to_rid'], limit=limit)
+            insert_series_values(series_def, report, None, None, after=series_def['to_rid'])
 
 
     min_report_instance_id = util.uuid_for_prev_dt(util.uuid_with_dt(from_dt))
