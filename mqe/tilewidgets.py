@@ -531,6 +531,7 @@ class ChartDrawerBase(Drawer):
 
 
 class TextDrawerBase(Drawer):
+    MIN_Y_TO_DARKEN = 0.4
 
     def _html_color_to_rgb(self, html_color):
         if not html_color.startswith('#'):
@@ -559,8 +560,8 @@ class TextDrawerBase(Drawer):
             if not rgb:
                 return color
             yiq = colorsys.rgb_to_yiq(*(x / 255.0 for x in rgb))
-            if yiq[0] > 0.5:
-                rgb = self._change_brightness(color, float(1 - (yiq[0] - 0.5)))
+            if yiq[0] > self.MIN_Y_TO_DARKEN:
+                rgb = self._change_brightness(color, float(1 - (yiq[0] - self.MIN_Y_TO_DARKEN)))
                 return self._rgb_to_html_color(*rgb)
             return color
 
