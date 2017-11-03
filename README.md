@@ -150,4 +150,5 @@ There are a few areas that would benefit from contributions:
 ## Who uses Monique Dashboards
 
 * [Monique.io](https://monique.io) - an enhanced web application + Javascript alarming, run using a highly-available cluster
+* [Monique.io Heroku add-on](https://elements.heroku.com/addons/moniqueio) - dynamically updated dashboards for dynos and individual URLs. The add-on uses the auto-creation of tiles feature to present metrics for each dyno and URL in use. The auto-creation of data series is used to dynamically add a HTTP status code to tiles displaying HTTP metrics.
 
