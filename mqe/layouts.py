@@ -773,9 +773,10 @@ def repack_mod(put_master_first=True):
 
 
 def promote_first_as_master_mod():
-    """A layout mod that makes the first tpcreated tile (wrt. tags sorting order) a new master.
-    The old master is downgraded to a tpcreated tile of the new master. You probably want
-    to call :meth:`repack_mod` after calling this mod to resort the tiles.
+    """A layout mod that makes the first tile in the group of tpcreated tiles and its master
+    a new master. The old master is downgraded to a tpcreated tile of the new master.
+
+    You probably want to call :meth:`repack_mod` after calling this mod to resort the tiles.
     """
 
     def do_promote_first_as_master_mod(layout_mod):

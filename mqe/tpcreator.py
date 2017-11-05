@@ -110,11 +110,17 @@ def _tpcreator_prefix(tag):
 
 ### TPCreator handling
 
-def handle_tpcreator(owner_id, report_id, report_instance):
+def handle_tpcreator(owner_id, report_id, report_instance, make_first_master=False):
     """The method calls the TPCreator (see :ref:`guide_tpcreator`) for the given report instance,
     possibly creating new tiles from a master tile and altering dashboards'
     layouts. The signal :attr:`~mqe.signals.layout_modified` is issued for each
-    modification."""
+    modification.
+
+    :param bool make_first_master: whether to promote the first tile wrt. ordering
+        of tag values to a master tile. The default is ``False``, which means that
+        a new master tile will not be promoted.
+
+    """
     layout_rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, report_id, [], 'tpcreator',
                                                          mqeconfig.MAX_TPCREATORS_PER_REPORT)
     if not layout_rows:
@@ -125,8 +131,20 @@ def handle_tpcreator(owner_id, report_id, report_instance):
              len(layout_rows), owner_id, report_id, report_instance.report_instance_id)
     for row in layout_rows:
         mods = [tpcreator_mod(report_instance, row),
+                # run the repacking only if tpcreator created a new tile
                 layouts.if_mod(lambda layout_mod: layout_mod.new_tiles,
-                               layouts.repack_mod())]
+                               layouts.repack_mod(put_master_first=(not make_first_master)))]
+        if make_first_master:
+            mods.extend([
+                # run the promote_first... mod only if tpcreator created a new tile
+                layouts.if_mod(lambda layout_mod: layout_mod.new_tiles,
+                               layouts.promote_first_as_master_mod()),
+                # another repacking is needed if the promote_first... mod made replacements,
+                # because the mod doesn't preserve ordering
+                layouts.if_mod(lambda layout_mod: layout_mod.tile_replacement,
+                               layouts.repack_mod()),
+            ])
+
         lmr = layouts.apply_mods(mods, owner_id, row['dashboard_id'], for_layout_id=None,
                                  max_tries=MAX_TPCREATE_TRIES)
         if lmr and lmr.new_layout.layout_id != lmr.old_layout.layout_id:

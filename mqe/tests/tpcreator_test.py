@@ -15,7 +15,7 @@ from mqe.layouts import Layout
 from mqe import reports
 from mqe import sscreator
 
-from mqe.tests.tutil import new_report_data, patch
+from mqe.tests.tutil import new_report_data, patch, ReportData
 
 
 class TPCreatorTest(unittest.TestCase):
@@ -642,6 +642,106 @@ class TPCreatorTest(unittest.TestCase):
         self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']],
                          sorted(tile.tags for tile in layout.tile_dict))
 
+    def test_make_first_master(self):
+        rd = ReportData('r')
+
+        tile_config = {
+            'tags': ['p1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'p1:10', 'prefix': 'p1:'}],
+                'sscs': dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            }
+        }
+        master_tile = Tile.insert(rd.owner_id, rd.report_id, rd.dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+
+        rd.report.process_input('0', tags=['p1:10'])
+        rd.report.process_input('0', tags=['p1:11'])
+
+        ri1 = rd.report.process_input('0\n1\n2', tags=['p1:10'],
+                                      handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri1, make_first_master=True)
+        ri2 = rd.report.process_input('0\n1\n2', tags=['p1:8'],
+                                      handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri2, make_first_master=True)
+
+        self.assertEqual(['p1:8', 'p1:10', 'p1:11'],
+                         [tile.tags[0] for tile in rd.tiles_sorted_by_vo()])
+        master_tile = rd.get_tile_by_tags(['p1:8'])
+        self.assertTrue(master_tile.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo()[1:]:
+            self.assertEqual(master_tile.tile_id, tile.get_master_tile_id())
 
 
+        ri3 = rd.report.process_input('0\n1\n2', tags=['p1:4'],
+                                      handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri3, make_first_master=True)
 
+        self.assertEqual(['p1:4', 'p1:8', 'p1:10', 'p1:11'],
+                         [tile.tags[0] for tile in rd.tiles_sorted_by_vo()])
+        master_tile = rd.get_tile_by_tags(['p1:4'])
+        self.assertTrue(master_tile.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo()[1:]:
+            self.assertEqual(master_tile.tile_id, tile.get_master_tile_id())
+
+
+        ri4 = rd.report.process_input('0\n1\n2', tags=['p1:9'],
+                                      handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri4, make_first_master=True)
+
+        self.assertEqual(['p1:4', 'p1:8', 'p1:9', 'p1:10', 'p1:11'],
+                         [tile.tags[0] for tile in rd.tiles_sorted_by_vo()])
+        master_tile = rd.get_tile_by_tags(['p1:4'])
+        self.assertTrue(master_tile.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo()[1:]:
+            self.assertEqual(master_tile.tile_id, tile.get_master_tile_id())
+
+
+        ri5 = rd.report.process_input('0\n1\n2', tags=['p1:9'],
+                                      handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri5, make_first_master=True)
+
+        self.assertEqual(['p1:4', 'p1:8', 'p1:9', 'p1:10', 'p1:11'],
+                         [tile.tags[0] for tile in rd.tiles_sorted_by_vo()])
+        master_tile = rd.get_tile_by_tags(['p1:4'])
+        self.assertTrue(master_tile.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo()[1:]:
+            self.assertEqual(master_tile.tile_id, tile.get_master_tile_id())
+
+        return rd
+
+    def test_make_first_master_multiple_masters(self):
+        rd = self.test_make_first_master()
+
+        tile_config = {
+            'tags': ['q1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'q1:10', 'prefix': 'q1:'}],
+            }
+        }
+        r2 = reports.Report.insert(rd.owner_id, 'r2')
+        master_tile2 = Tile.insert(rd.owner_id, r2.report_id, rd.dashboard_id, tile_config)
+        layouts.place_tile(master_tile2)
+
+        ri1 = r2.process_input('0', tags=['q1:8'], handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, r2.report_id, ri1, True)
+
+        self.assertEqual(['p1:4', 'p1:8', 'p1:9', 'p1:10', 'p1:11', 'q1:8', 'q1:10'],
+                         [tile.tags[0] for tile in rd.tiles_sorted_by_vo()])
+
+        master_tile = rd.get_tile_by_tags(['p1:4'])
+        self.assertTrue(master_tile.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo()[1:]:
+            if tile.tags[0].startswith('p1'):
+                self.assertEqual(master_tile.tile_id, tile.get_master_tile_id())
+
+        master_tile2 = rd.get_tile_by_tags(['q1:8'])
+        self.assertTrue(master_tile2.is_master_tile())
+        tile2 = rd.get_tile_by_tags(['q1:10'])
+        self.assertEqual(tile2.get_master_tile_id(), master_tile2.tile_id)

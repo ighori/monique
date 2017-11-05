@@ -381,6 +381,58 @@ class RepackTest(unittest.TestCase):
             elif tile.tags[0].startswith('q') and tile.tile_id != master2.tile_id:
                 self.assertEqual(master2.tile_id, tile.get_master_tile_id())
 
+    def test_promote_first_as_master_multiple_masters_one_apply_mods_run(self):
+        rd = self.test_repack_dont_put_master_first()
+
+        tile_config = {
+            'tags': ['q1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'q1:10', 'prefix': 'q1:'}],
+            }
+        }
+        r2 = Report.insert(rd.owner_id, 'r2')
+        master_tile2 = Tile.insert(rd.owner_id, r2.report_id, rd.dashboard_id, tile_config)
+        layouts.place_tile(master_tile2)
+
+        ri1 = r2.process_input('0', tags=['q1:8'], handle_tpcreator=False).report_instance
+        ri2 = r2.process_input('0', tags=['q1:12'],
+                               handle_tpcreator=False).report_instance
+        ri3 = r2.process_input('0', tags=['q1:6'],
+                               handle_tpcreator=False).report_instance
+        ri4 = rd.report.process_input('0', tags=['p1:2'],
+                                      handle_tpcreator=False).report_instance
+
+        layout_rows_tpcreator = c.dao.LayoutDAO.select_layout_by_report_multi(
+            rd.owner_id, rd.report_id, [], 'tpcreator', 100)
+        mods = [
+            tpcreator.tpcreator_mod(ri1, layout_rows_tpcreator[0]),
+            tpcreator.tpcreator_mod(ri2, layout_rows_tpcreator[0]),
+            tpcreator.tpcreator_mod(ri3, layout_rows_tpcreator[0]),
+            tpcreator.tpcreator_mod(ri4, layout_rows_tpcreator[0]),
+            layouts.repack_mod(put_master_first=False),
+            layouts.promote_first_as_master_mod(),
+            layouts.if_mod(lambda layout_mod: layout_mod.tile_replacement,
+                           layouts.repack_mod())
+        ]
+        layouts.apply_mods(mods, rd.owner_id, rd.dashboard_id, None)
+
+        self.assertEqual([['p1:2'], ['p1:6'], ['p1:8'], ['p1:10'], ['p1:12'],
+                          ['q1:6'], ['q1:8'], ['q1:10'], ['q1:12']],
+                         [tile.tags for tile in rd.tiles_sorted_by_vo()])
+
+        master1 = rd.get_tile_by_tags(['p1:2'])
+        master2 = rd.get_tile_by_tags(['q1:6'])
+        self.assertTrue(master1.is_master_tile())
+        self.assertTrue(master2.is_master_tile())
+        for tile in rd.tiles_sorted_by_vo():
+            if tile.tags[0].startswith('p') and tile.tile_id != master1.tile_id:
+                self.assertEqual(master1.tile_id, tile.get_master_tile_id())
+            elif tile.tags[0].startswith('q') and tile.tile_id != master2.tile_id:
+                self.assertEqual(master2.tile_id, tile.get_master_tile_id())
+
 
 class LayoutModuleTest(unittest.TestCase):
 
