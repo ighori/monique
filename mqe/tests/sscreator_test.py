@@ -10,6 +10,7 @@ from mqe.reports import Report
 from mqe import layouts
 from mqe.layouts import Layout
 from mqe import sscreator
+from mqe import dashboards
 
 from mqe.tests.tutil import new_report_data, patch
 
@@ -298,7 +299,8 @@ class SSCSTest(unittest.TestCase):
         layout = Layout.select(owner_id, dashboard_id)
         tile = layout.tile_dict.keys()[0]
 
-        # this fails - see issue #5
-        #self.assertEqual(5, len(tile.series_specs()))
+        self.assertEqual(5, len(tile.series_specs()))
 
+        tile_ids = dashboards._select_tile_ids(dashboard_id)
+        self.assertEqual(1, len(tile_ids))
 
