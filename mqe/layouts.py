@@ -159,9 +159,19 @@ class Layout(object):
 
         return None
 
+    def get_current_props_by_tile_id(self):
+        res = {}
+        by_tile_id = self.layout_props['by_tile_id']
+        for tile_id in self.layout_dict:
+            if tile_id in by_tile_id:
+                res[tile_id] = by_tile_id[tile_id]
+            elif tile_id in self._included_tiles:
+                res[tile_id] = self.props_of_tile(self._included_tiles[tile_id])
+        return res
+
     def get_tpcreated_tile_ids(self, master_tile_id):
         res = []
-        for tile_id, props in self.layout_props['by_tile_id'].items():
+        for tile_id, props in self.get_current_props_by_tile_id().items():
             if props.get('master_id') == master_tile_id:
                 res.append(tile_id)
         return res
@@ -765,7 +775,7 @@ def repack_mod(put_master_first=True):
 def promote_first_as_master_mod():
     """A layout mod that makes the first tpcreated tile (wrt. tags sorting order) a new master.
     The old master is downgraded to a tpcreated tile of the new master. You probably want
-    to call :meth:`tpcreator_mod` after calling this mod to resort the tiles.
+    to call :meth:`repack_mod` after calling this mod to resort the tiles.
     """
 
     def do_promote_first_as_master_mod(layout_mod):
