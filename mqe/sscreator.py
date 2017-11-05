@@ -41,7 +41,7 @@ def sscreator_mod(report_instance, layout_row):
     def do_sscreator_mod(layout_mod):
         tile_ids = []
         any_sscs_found = False
-        for tile_id, props in layout_mod.layout.layout_props['by_tile_id'].items():
+        for tile_id, props in layout_mod.layout.get_current_props_by_tile_id().items():
             if not props.get('sscs'):
                 continue
             if props['report_id'] != report_instance.report_id:

@@ -183,7 +183,7 @@ def _get_tpcreator_data(layout_mod, report_id):
     tpcreator_spec_by_master_id = {}
     tpcreated_tags_by_master_id = defaultdict(set)
 
-    for tile_id, props in layout_mod.layout.layout_props['by_tile_id'].items():
+    for tile_id, props in layout_mod.layout.get_current_props_by_tile_id().items():
         if props['report_id'] != report_id:
             continue
         if props.get('is_master'):
@@ -194,11 +194,6 @@ def _get_tpcreator_data(layout_mod, report_id):
         if not master_id:
             continue
         tpcreated_tags_by_master_id[master_id].add(tuple(sorted(props['tags'])))
-
-    for tile in layout_mod.new_tiles:
-        master_id = tile.get_master_tile_id()
-        if master_id and master_id in tpcreated_tags_by_master_id:
-            tpcreated_tags_by_master_id[master_id].add(tuple(sorted(tile.tags)))
 
     return tpcreator_spec_by_master_id, tpcreated_tags_by_master_id
 
@@ -245,7 +240,7 @@ def _sync_tpcreator_data(master_tile, tpcreated, tpcreator_spec):
 
 def replace_tpcreated(layout, old_master, new_master, sync_tpcreated=True,
                       skip_replacements=set()):
-    tpcreator_spec = layout.layout_props['by_tile_id'][old_master.tile_id]['tpcreator_spec']
+    tpcreator_spec = layout.get_tile_props(old_master.tile_id)['tpcreator_spec']
 
     tpcreated_tile_id_list = layout.get_tpcreated_tile_ids(old_master.tile_id)
     if skip_replacements:

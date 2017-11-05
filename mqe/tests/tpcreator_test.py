@@ -589,7 +589,6 @@ class TPCreatorTest(unittest.TestCase):
         self.assertEqual(3, len(layout.layout_dict))
         self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']], sorted(tile.tags for tile in layout.tile_dict))
 
-    @unittest.skip('Failing test - tpcreator_mod and sscreator_mod do not work together.')
     def test_tpcreator_mod_with_sscreator_mod(self):
         owner_id = uuid.uuid4()
         dashboard_id = uuid.uuid4()
