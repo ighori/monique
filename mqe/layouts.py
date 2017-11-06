@@ -640,6 +640,22 @@ class Rectangle(object):
                 return True
         return False
 
+    def next_position(self):
+        if self.x1 + 1 > mqeconfig.DASHBOARD_COLS:
+            width = self.x1 - self.x0
+            self.x0 = 0
+            self.x1 = width
+            self.y0 += 1
+            self.y1 += 1
+            return
+        
+        self.x0 += 1
+        self.x1 += 1
+
+    def to_visual_options(self):
+        return {'x': self.x0, 'y': self.y0,
+                'width': self.x1 - self.x0, 'height': self.y1 - self.y0}
+
 
 def _visual_options_intersect(rectangles, visual_options):
     return Rectangle(visual_options).any_intersects(rectangles)
@@ -664,23 +680,11 @@ def _visual_options_of_beside_or_below_last(layout_dict, visual_options):
                          y=(max(vo['y'] + vo['height'] for vo in layout_dict.values())))
     return below_last_vo
 
-def _gen_x_y(x=0, y=0):
-    while True:
-        yield (x, y)
-        if x + 1 >= mqeconfig.DASHBOARD_COLS:
-            x = 0
-            y += 1
-        else:
-            x += 1
-
 def _xy_visual_options_first_match(rectangles, visual_options, start_x=0, start_y=0):
-    for (x, y) in _gen_x_y(start_x, start_y):
-        candidate = dict(visual_options, x=x, y=y)
-        if _visual_options_outside_of_screen(candidate):
-            continue
-        if Rectangle(candidate).any_intersects(rectangles):
-            continue
-        return candidate
+    candidate = Rectangle(dict(visual_options, x=start_x, y=start_y))
+    while candidate.any_intersects(rectangles):
+        candidate.next_position()
+    return candidate.to_visual_options()
 
 def _sort_layout_items(layout_dict, by):
     if by == 'x':
