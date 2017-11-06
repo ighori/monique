@@ -540,7 +540,8 @@ def place_tile_mod(tile, size_of=None, initial_visual_options=None):
             visual_options.setdefault('width', mqeconfig.TILE_DEFAULT_WIDTH)
             visual_options.setdefault('height', mqeconfig.TILE_DEFAULT_HEIGHT)
 
-        visual_options = _xy_visual_options_first_match(layout_dict, visual_options)
+        rectangles = [Rectangle(vo) for vo in layout_dict.values()]
+        visual_options = _xy_visual_options_first_match(rectangles, visual_options)
 
         layout_dict[tile.tile_id] = visual_options
 
@@ -671,8 +672,7 @@ def _gen_x_y(x=0, y=0):
         else:
             x += 1
 
-def _xy_visual_options_first_match(layout_dict, visual_options, start_x=0, start_y=0):
-    rectangles = [Rectangle(vo) for vo in layout_dict.values()]
+def _xy_visual_options_first_match(rectangles, visual_options, start_x=0, start_y=0):
     for (x, y) in _gen_x_y(start_x, start_y):
         candidate = dict(visual_options, x=x, y=y)
         if _visual_options_outside_of_screen(candidate):
@@ -798,14 +798,16 @@ def repack_mod(put_master_first=True):
         res = {}
         start_x = 0
         start_y = 0
+        rectangles = []
         for (tile_id, vo) in layout_dict_items:
             new_vo = vo.copy()
             new_vo.pop('x', None)
             new_vo.pop('y', None)
 
-            new_vo = _xy_visual_options_first_match(res, new_vo, start_x, start_y)
+            new_vo = _xy_visual_options_first_match(rectangles, new_vo, start_x, start_y)
 
             res[tile_id] = new_vo
+            rectangles.append(Rectangle(new_vo))
             start_x = new_vo['x']
             start_y = new_vo['y']
         layout_mod.layout.layout_dict = res
