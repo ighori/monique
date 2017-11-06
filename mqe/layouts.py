@@ -518,6 +518,9 @@ def apply_mods_for_noninserted_layout(mods, layout):
 def place_tile_mod(tile, size_of=None, initial_visual_options=None):
     """A layout mod placing a tile. See :func:`place_tile` for a description of parameters."""
     def do_place_tile(layout_mod):
+        log.debug('Starting placing tile=%s layout_id=%s dashboard_id=%s',
+                  tile, layout_mod.layout.layout_id, layout_mod.layout.dashboard_id)
+
         layout_dict = layout_mod.layout.layout_dict
 
         if tile.tile_id in layout_dict:
@@ -542,6 +545,8 @@ def place_tile_mod(tile, size_of=None, initial_visual_options=None):
         layout_dict[tile.tile_id] = visual_options
 
         layout_mod.new_tiles[tile] = visual_options
+
+        log.debug('Finished placing tile visual_options=%s', visual_options)
 
     return do_place_tile
 
@@ -747,6 +752,9 @@ def repack_mod(put_master_first=True):
     """
 
     def do_repack(layout_mod):
+        log.debug('Starting repacking of layout_id=%s dashboard_id=%s', layout_mod.layout.layout_id,
+                  layout_mod.layout.dashboard_id)
+
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
         tile_id_to_index = {item[0]: i for i, item in enumerate(layout_dict_items)}
 
@@ -782,6 +790,8 @@ def repack_mod(put_master_first=True):
             start_x = new_vo['x']
             start_y = new_vo['y']
         layout_mod.layout.layout_dict = res
+
+        log.debug('Finished repacking')
 
     return do_repack
 

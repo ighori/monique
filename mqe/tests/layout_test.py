@@ -2,6 +2,7 @@ import unittest
 import uuid
 from uuid import UUID
 from copy import deepcopy
+from time import time
 
 from mqe import layouts
 from mqe.layouts import place_tile, detach_tile, Layout, repack
@@ -277,6 +278,32 @@ class RepackTest(unittest.TestCase):
 
         self.assertEqual([['p1:10'], ['p1:6'], ['p1:8'], ['p1:12']],
                          [tile.tags for tile in rd.tiles_sorted_by_vo()])
+
+    @unittest.skip('Performance testing - run manually')
+    def test_repack_performance(self):
+        rd = ReportData('r')
+
+        tile_config = {
+            'tags': ['p1:1'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'p1:1', 'prefix': 'p1:'}],
+            }
+        }
+        tile = Tile.insert(rd.owner_id, rd.report_id, rd.dashboard_id, tile_config)
+        place_tile(tile)
+
+        enable_logging(True, True)
+        start = time()
+        for i in range(1, 201):
+            rd.report.process_input('1', tags=['p1:%s' % i])
+        print 'Tiles created in %.1f' % ((time() - start) * 1000)
+
+        start = time()
+        layouts.repack(rd.owner_id, rd.dashboard_id)
+        print 'Single repack in %.1f' % ((time() - start) * 1000)
 
     def test_repack_dont_put_master_first(self):
         rd = self.test_no_repack()
