@@ -117,6 +117,7 @@ class OwnerDashboards(object):
             self.insert_dashboard(insert_if_no_dashboards, {})
             self.reload()
 
+
     def reload(self):
         self.dashboards = [Dashboard(row) for row in c.dao.DashboardDAO.select_all(self.owner_id)]
         self.dashboard_id_ordering = c.dao.DashboardDAO.select_all_dashboards_ordering(
@@ -125,6 +126,7 @@ class OwnerDashboards(object):
         self.dashboard_by_id = {db.dashboard_id: db for db in self.dashboards}
         self.dashboard_ordering_by_id = {dashboard_id: i for i, dashboard_id in enumerate(self.dashboard_id_ordering)}
         self.dashboards.sort(key=lambda db: self.dashboard_ordering_by_id.get(db.dashboard_id, 1000000))
+
 
     def insert_dashboard(self, dashboard_name, dashboard_options={}):
         """Insert a dashboard having the passed ``dashboard_name`` and ``dashboard_options`` (a JSON-serializable value).
@@ -152,3 +154,21 @@ class OwnerDashboards(object):
 
         return Dashboard(row)
 
+
+    def get_dashboards_displaying_report(self, report_id):
+        """Returns a list of :class:`Dashboard` objects that contain a tile
+        displaying the given report.
+        """
+        from mqe import layouts
+
+        res = []
+        layout_list = layouts.Layout.select_multi(self.owner_id,
+                                                  [d.dashboard_id for d in self.dashboards])
+        for layout in layout_list:
+            if not layout:
+                continue
+            for tile_id, props in layout.layout_props['by_tile_id'].items():
+                if props.get('report_id') == report_id:
+                    res.append(self.dashboard_by_id[layout.dashboard_id])
+                    break
+        return res

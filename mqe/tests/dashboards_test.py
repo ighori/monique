@@ -5,6 +5,10 @@ from mqe import dashboards
 from mqe.dashboards import OwnerDashboards, Dashboard
 from mqe.tests.tutil import call, report_data
 from mqe.tests import tiles_test
+from mqe.reports import Report
+from mqe import dataseries
+from mqe.tiles import Tile
+from mqe.layouts import place_tile, detach_tile
 
 
 
@@ -70,6 +74,62 @@ class OwnerDashboardsTest(unittest.TestCase):
         for i in range(4):
             self.assertEqual(od.dashboard_ordering_by_id[od.dashboards[i].dashboard_id], i)
 
+    def test_get_dashboards_displaying_report(self):
+        od = self.test_inserting()
+
+        res = od.get_dashboards_displaying_report(uuid.uuid4())
+        self.assertEqual([], res)
+
+        r = Report.insert(od.owner_id, 'r')
+        tile_config = {
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+        }
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual([], res)
+
+        t1 = Tile.insert(od.owner_id, r.report_id, od.dashboards[3].dashboard_id, tile_config)
+        place_tile(t1)
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual(1, len(res))
+        self.assertEqual('Dash 4', res[0].dashboard_name)
+
+        t2 = Tile.insert(od.owner_id, r.report_id, od.dashboards[1].dashboard_id, tile_config)
+        place_tile(t2)
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual(2, len(res))
+        self.assertEqual('Dash 2', res[0].dashboard_name)
+        self.assertEqual('Dash 4', res[1].dashboard_name)
+
+        t3 = Tile.insert(od.owner_id, r.report_id, od.dashboards[1].dashboard_id, tile_config)
+        place_tile(t3)
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual(2, len(res))
+        self.assertEqual('Dash 2', res[0].dashboard_name)
+        self.assertEqual('Dash 4', res[1].dashboard_name)
+
+        detach_tile(t3)
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual(2, len(res))
+        self.assertEqual('Dash 2', res[0].dashboard_name)
+        self.assertEqual('Dash 4', res[1].dashboard_name)
+
+        detach_tile(t2)
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual(1, len(res))
+        self.assertEqual('Dash 4', res[0].dashboard_name)
+
+        od.dashboards[3].delete()
+
+        res = od.get_dashboards_displaying_report(r.report_id)
+        self.assertEqual(0, len(res))
 
 
 class DashboardTest(unittest.TestCase):
