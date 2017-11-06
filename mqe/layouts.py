@@ -39,11 +39,7 @@ class Layout(object):
         self._included_tiles = {}
 
     @staticmethod
-    def select(owner_id, dashboard_id):
-        """Selects the :class:`Layout` associated with the dashboard"""
-        row = c.dao.LayoutDAO.select(owner_id, dashboard_id)
-        if not row:
-            return None
+    def _from_row(owner_id, dashboard_id, row):
         res = Layout()
         res.layout_dict = dict(serialize.json_loads(row['layout_def']))
         res.layout_props = serialize.json_loads(row['layout_props']) if row['layout_props'] \
@@ -53,6 +49,24 @@ class Layout(object):
         res.dashboard_id = dashboard_id
         res.layout_id = row['layout_id']
         return res
+
+    @staticmethod
+    def select(owner_id, dashboard_id):
+        """Selects the :class:`Layout` associated with the dashboard"""
+        row = c.dao.LayoutDAO.select(owner_id, dashboard_id)
+        if not row:
+            return None
+        return Layout._from_row(owner_id, dashboard_id, row)
+
+    @staticmethod
+    def select_multi(owner_id, dashboard_id_list):
+        """Selects a list of :class:`Layout` objects for a list of dashboard IDs.
+        The ordering of the result matches the order of the ``dashboard_id_list``.
+        """
+        rows = c.dao.LayoutDAO.select_multi(owner_id, dashboard_id_list)
+        row_by_dashboard_id = {row['dashboard_id']: row for row in rows}
+        return [Layout._from_row(owner_id, dashboard_id, row_by_dashboard_id[dashboard_id])
+                for dashboard_id in dashboard_id_list if dashboard_id in row_by_dashboard_id]
 
     def set(self, owner_id=None, dashboard_id=None, old_layout_id=None):
         """Set a new layout definition for the dashboard (replacing the existing one), using

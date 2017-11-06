@@ -243,6 +243,12 @@ class LayoutDAO(BaseDAO):
         """Select a layout row, possibly limited to the ``columns`` columns"""
         raise NotImplementedError()
 
+    def select_multi(self, owner_id, dashboard_id,
+               columns=('layout_id', 'layout_def', 'layout_props')):
+        """Select a list of layout rows, possibly limited to the ``columns`` columns.
+        The returned rows must include the ``dashboard_id`` column."""
+        raise NotImplementedError()
+
     def set(self, owner_id, dashboard_id, old_layout_id, new_layout_id,
             new_layout_def, new_layout_props):
         """Set a new layout row ``{ 'layout_def': new_layout_def, 'layout_props': new_layout_props, 'layout_id': new_layout_id}`` for the ``owner_id`` and ``dashboard_id`` parameters if the current value of ``layout_id`` is equal to ``old_layout_id``. Return a bool telling if the operation was successful."""

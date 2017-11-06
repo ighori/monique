@@ -106,6 +106,19 @@ class Sqlite3LayoutDAO(LayoutDAO):
                         [owner_id, dashboard_id])
             return cur.fetchone()
 
+    def select_multi(self, owner_id, dashboard_id_list,
+               columns=('layout_id', 'layout_def', 'layout_props')):
+        if 'dashboard_id' not in columns:
+            columns += 'dashboard_id',
+        what = ', '.join(columns)
+
+        with cursor() as cur:
+            cur.execute("""SELECT {what}
+                           FROM dashboard_layout
+                           WHERE owner_id=? AND dashboard_id IN {in_p}"""\
+                        .format(what=what, in_p=in_params(dashboard_id_list)),
+                        [owner_id] + dashboard_id_list)
+            return cur.fetchall()
 
     def set(self, owner_id, dashboard_id, old_layout_id, new_layout_id,
             new_layout_def, new_layout_props):

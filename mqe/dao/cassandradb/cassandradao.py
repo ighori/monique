@@ -782,6 +782,21 @@ class CassLayoutDAO(LayoutDAO):
         postprocess_col_renames(COLUMN_RENAMES['dashboard_layout_def'], rows[0])
         return rows[0]
 
+    def select_multi(self, owner_id, dashboard_id_list,
+               columns=('layout_id', 'layout_def', 'layout_props')):
+        if columns and 'dashboard_id' not in columns:
+            columns += 'dashboard_id',
+        what = what_from_columns(columns, 'dashboard_layout_def')
+
+        rows = c.cass.execute("""SELECT {what}
+                                 FROM mqe.dashboard_layout_def
+                                 WHERE owner_id=? AND dashboard_id IN ?""".format(what=what),
+                              [owner_id, dashboard_id_list])
+
+        for row in rows:
+            postprocess_col_renames(COLUMN_RENAMES['dashboard_layout_def'], row)
+        return rows
+
     def set(self, owner_id, dashboard_id, old_layout_id, new_layout_id,
             new_layout_def, new_layout_props):
         layout_id_colname = COLUMN_RENAMES['dashboard_layout_def'].get('layout_id', 'layout_id')

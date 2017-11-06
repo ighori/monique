@@ -434,6 +434,39 @@ class RepackTest(unittest.TestCase):
                 self.assertEqual(master2.tile_id, tile.get_master_tile_id())
 
 
+class LayoutClassTest(unittest.TestCase):
+
+    def test_select_multi(self):
+        owner_id = uuid.uuid1()
+
+        d_id1 = uuid.uuid1()
+        d_id2 = uuid.uuid1()
+        r = Report.insert(owner_id, 'r')
+
+        res = Layout.select_multi(owner_id, [d_id1, d_id2])
+        self.assertEqual([], res)
+
+        tile_config = {
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+        }
+
+        t1 = Tile.insert(owner_id, r.report_id, d_id1, tile_config)
+        place_tile(t1)
+
+        res = Layout.select_multi(owner_id, [d_id1, d_id2])
+        self.assertEqual(1, len(res))
+        self.assertEqual(Layout.select(owner_id, d_id1).layout_id, res[0].layout_id)
+
+        t2 = Tile.insert(owner_id, r.report_id, d_id2, tile_config)
+        place_tile(t2)
+        res = Layout.select_multi(owner_id, [d_id1, d_id2])
+        self.assertEqual(2, len(res))
+        self.assertEqual(Layout.select(owner_id, d_id1).layout_id, res[0].layout_id)
+        self.assertEqual(Layout.select(owner_id, d_id2).layout_id, res[1].layout_id)
+
+
 class LayoutModuleTest(unittest.TestCase):
 
     def test_replace_wrong(self):
