@@ -511,6 +511,40 @@ def apply_mods_for_noninserted_layout(mods, layout):
     return layout_mod.apply_for_noninserted_layout(layout)
 
 
+### layout algorithms
+
+class RectanglePlacer(object):
+
+    def __init__(self, rectangles):
+        self.free_rects = [{'x': 0, 'y': 0, 'width': mqeconfig.DASHBOARD_COLS, 'height': -1}]
+        self.rectangles = rectangles
+
+    def _find_first_free_rect(self, rect):
+        for i, fr in enumerate(self.free_rects):
+            if fr['width'] < rect['width']:
+                continue
+            if fr['height'] != -1 and fr['height'] < rect['height']:
+                continue
+            return i
+        return None
+
+    def _resort_free_rects(self):
+        self.free_rects.sort(key=lambda fr: (fr['y'], fr['x']))
+
+    def _use_free_rect(self, fr_idx, rect):
+        fr = self.free_rects[fr_idx]
+        if fr['width'] == rect['width'] and fr['height'] == rect['height']:
+            del self.free_rects[fr_idx]
+            return
+        if fr['height'] == rect['height']:
+            fr['x'] += rect['width']
+            self._resort_free_rects()
+            return
+        if fr['width'] == rect['width']:
+            fr['y'] += rect['height']
+            return
+
+
 
 ### mod functions
 
