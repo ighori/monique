@@ -29,6 +29,10 @@ LAYOUT_DICT = {
                                                    u'width': 1,
                                                    u'x': 0,
                                                    u'y': 2},
+    UUID('454687fa-01ad-4fee-99eb-c25073a26472'): {u'height': 3,
+                                                   u'width': 1,
+                                                   u'x': 0,
+                                                   u'y': 5},
 }
 
 
@@ -67,7 +71,7 @@ class PackingUpwardsTest(unittest.TestCase):
         ld = self.pack(LD2)
 
         ld_expected = deepcopy(LAYOUT_DICT)
-        ld_expected[ud] = {'height': 5, 'width': 3, 'x': 0, 'y': 5}
+        ld_expected[ud] = {'height': 5, 'width': 3, 'x': 0, 'y': 8}
         self.assertDictEqual(ld_expected, ld)
 
     def test_pack_floating_2(self):

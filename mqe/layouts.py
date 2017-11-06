@@ -641,8 +641,8 @@ class Rectangle(object):
         return False
 
 
-def _visual_options_intersect(visual_options, layout_dict_values):
-    return any(util.rectangles_intersect(visual_options, vo) for vo in layout_dict_values)
+def _visual_options_intersect(rectangles, visual_options):
+    return Rectangle(visual_options).any_intersects(rectangles)
 
 def _visual_options_outside_of_screen(visual_options):
     if visual_options['x'] + visual_options['width'] > mqeconfig.DASHBOARD_COLS:
@@ -655,8 +655,9 @@ def _visual_options_of_beside_or_below_last(layout_dict, visual_options):
     beside_last_vo = dict(visual_options,
                           x=last['x'] + last['width'],
                           y=last['y'])
+    rectangles = [Rectangle(vo) for vo in layout_dict.values()]
     if not _visual_options_outside_of_screen(beside_last_vo) \
-            and not _visual_options_intersect(beside_last_vo, layout_dict.values()):
+            and not _visual_options_intersect(rectangles, beside_last_vo):
         return beside_last_vo
     below_last_vo = dict(visual_options,
                          x=0,
@@ -694,13 +695,17 @@ def pack_upwards_mod():
 
     def do_pack_upwards(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
-        for i, (tile_id, vo) in enumerate(layout_dict_items):
+        visual_options = [vo for _, vo in layout_dict_items]
+        rectangles = [Rectangle(vo) for vo in visual_options]
+        for i, vo in enumerate(visual_options):
             while True:
                 if vo['y'] <= 0:
+                    rectangles[i] = Rectangle(vo)
                     break
                 vo['y'] -= 1
-                if _visual_options_intersect(vo, [vo2 for tile_id, vo2 in util.without_idx(layout_dict_items, i)]):
+                if _visual_options_intersect(util.without_idx(rectangles, i), vo):
                     vo['y'] += 1
+                    rectangles[i] = Rectangle(vo)
                     break
 
     return do_pack_upwards
@@ -712,13 +717,17 @@ def pack_leftwards_mod():
 
     def do_pack_leftwards(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'x')
-        for i, (ud, vo) in enumerate(layout_dict_items):
+        visual_options = [vo for _, vo in layout_dict_items]
+        rectangles = [Rectangle(vo) for vo in visual_options]
+        for i, vo in enumerate(visual_options):
             while True:
                 if vo['x'] <= 0:
+                    rectangles[i] = Rectangle(vo)
                     break
                 vo['x'] -= 1
-                if _visual_options_intersect(vo, [vo2 for ud, vo2 in util.without_idx(layout_dict_items, i)]):
+                if _visual_options_intersect(util.without_idx(rectangles, i), vo):
                     vo['x'] += 1
+                    rectangles[i] = Rectangle(vo)
                     break
 
     return do_pack_leftwards
