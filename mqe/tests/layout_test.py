@@ -279,7 +279,7 @@ class RepackTest(unittest.TestCase):
         self.assertEqual([['p1:10'], ['p1:6'], ['p1:8'], ['p1:12']],
                          [tile.tags for tile in rd.tiles_sorted_by_vo()])
 
-    @unittest.skip('Performance testing - run manually')
+    # @unittest.skip('Performance testing - run manually')
     def test_repack_performance(self):
         rd = ReportData('r')
 
@@ -295,7 +295,6 @@ class RepackTest(unittest.TestCase):
         tile = Tile.insert(rd.owner_id, rd.report_id, rd.dashboard_id, tile_config)
         place_tile(tile)
 
-        enable_logging(True, True)
         start = time()
         for i in range(1, 201):
             rd.report.process_input('1', tags=['p1:%s' % i])

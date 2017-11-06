@@ -619,6 +619,25 @@ def replace_tiles_mod(old_to_new_tile_dict, sync_tpcreated=True, do_repacking=Tr
     return do_replace_tiles
 
 
+class Rectangle(object):
+
+    def __init__(self, vo):
+        self.x0 = vo['x']
+        self.y0 = vo['y']
+        self.x1 = vo['x'] + vo['width']
+        self.y1 = vo['y'] + vo['height']
+
+    def intersects(self, other):
+        return not (self.x1 <= other.x0 or \
+                    other.x1 <= self.x0 or \
+                    self.y1 <= other.y0 or \
+                    other.y1 <= self.y0)
+
+    def any_intersects(self, rectangles):
+        for r in rectangles:
+            if self.intersects(r):
+                return True
+        return False
 
 
 def _visual_options_intersect(visual_options, layout_dict_values):
@@ -653,12 +672,12 @@ def _gen_x_y(x=0, y=0):
             x += 1
 
 def _xy_visual_options_first_match(layout_dict, visual_options, start_x=0, start_y=0):
-    layout_dict_values = layout_dict.values()
+    rectangles = [Rectangle(vo) for vo in layout_dict.values()]
     for (x, y) in _gen_x_y(start_x, start_y):
         candidate = dict(visual_options, x=x, y=y)
         if _visual_options_outside_of_screen(candidate):
             continue
-        if _visual_options_intersect(candidate, layout_dict_values):
+        if Rectangle(candidate).any_intersects(rectangles):
             continue
         return candidate
 
