@@ -540,7 +540,9 @@ def place_tile_mod(tile, size_of=None, initial_visual_options=None):
             visual_options.setdefault('width', mqeconfig.TILE_DEFAULT_WIDTH)
             visual_options.setdefault('height', mqeconfig.TILE_DEFAULT_HEIGHT)
 
-        visual_options = _xy_visual_options_first_match(layout_dict, visual_options)
+        vo_indexer = VisualOptionsIndexer()
+        vo_indexer.add_layout_dict(layout_dict)
+        visual_options = _xy_visual_options_first_match(vo_indexer, visual_options)
 
         layout_dict[tile.tile_id] = visual_options
 
@@ -619,6 +621,38 @@ def replace_tiles_mod(old_to_new_tile_dict, sync_tpcreated=True, do_repacking=Tr
     return do_replace_tiles
 
 
+class VisualOptionsIndexer(object):
+
+    def __init__(self):
+        self.x_index = [0] * mqeconfig.DASHBOARD_COLS
+        self.y_index = []
+
+    def add_layout_dict(self, layout_dict):
+        items = _sort_layout_items(layout_dict, 'y')
+        for tile_index, (tile_id, vo) in enumerate(items):
+            self.add_visual_options(tile_index, vo)
+
+    def add_visual_options(self, tile_index, vo):
+        tile_set = (1 << tile_index)
+        for x in range(vo['x'], vo['x'] + vo['width']):
+            self.x_index[x] |= tile_set
+
+        max_y = vo['y'] + vo['height']
+        if len(self.y_index) < max_y:
+            for i in range(len(self.y_index), max_y):
+                self.y_index.append(0)
+
+        for y in range(vo['y'], max_y):
+            self.y_index[y] |= tile_set
+
+    def intersects(self, vo):
+        for x in range(vo['x'], vo['x'] + vo['width']):
+            for y in range(vo['y'], vo['y'] + vo['height']):
+                if y >= len(self.y_index):
+                    continue
+                if self.x_index[x] & self.y_index[y] > 0:
+                    return True
+        return False
 
 
 def _visual_options_intersect(visual_options, layout_dict_values):
@@ -652,13 +686,12 @@ def _gen_x_y(x=0, y=0):
         else:
             x += 1
 
-def _xy_visual_options_first_match(layout_dict, visual_options, start_x=0, start_y=0):
-    layout_dict_values = layout_dict.values()
+def _xy_visual_options_first_match(vo_indexer, visual_options, start_x=0, start_y=0):
     for (x, y) in _gen_x_y(start_x, start_y):
         candidate = dict(visual_options, x=x, y=y)
         if _visual_options_outside_of_screen(candidate):
             continue
-        if _visual_options_intersect(candidate, layout_dict_values):
+        if vo_indexer.intersects(candidate):
             continue
         return candidate
 
@@ -779,14 +812,16 @@ def repack_mod(put_master_first=True):
         res = {}
         start_x = 0
         start_y = 0
-        for (tile_id, vo) in layout_dict_items:
+        vo_indexer = VisualOptionsIndexer()
+        for tile_index, (tile_id, vo) in enumerate(layout_dict_items):
             new_vo = vo.copy()
             new_vo.pop('x', None)
             new_vo.pop('y', None)
 
-            new_vo = _xy_visual_options_first_match(res, new_vo, start_x, start_y)
+            new_vo = _xy_visual_options_first_match(vo_indexer, new_vo, start_x, start_y)
 
             res[tile_id] = new_vo
+            vo_indexer.add_visual_options(tile_index, new_vo)
             start_x = new_vo['x']
             start_y = new_vo['y']
         layout_mod.layout.layout_dict = res
