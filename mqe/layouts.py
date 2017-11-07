@@ -640,24 +640,16 @@ class VisualOptionsIndexer(object):
         for pos in self._get_positions(vo):
             self.positions.add(pos)
 
+    def remove_visual_options(self, vo):
+        for pos in self._get_positions(vo):
+            self.positions.remove(pos)
+
     def intersects(self, vo):
         for pos in self._get_positions(vo):
             if pos in self.positions:
                 return True
         return False
 
-    def _xy_visual_options_first_match(vo_indexer, visual_options, start_x=0, start_y=0):
-        for (x, y) in _gen_x_y(start_x, start_y):
-            candidate = dict(visual_options, x=x, y=y)
-            if _visual_options_outside_of_screen(candidate):
-                continue
-            if vo_indexer.intersects(candidate):
-                continue
-            return candidate
-
-
-def _visual_options_intersect(visual_options, layout_dict_values):
-    return any(util.rectangles_intersect(visual_options, vo) for vo in layout_dict_values)
 
 def _visual_options_outside_of_screen(visual_options):
     if visual_options['x'] + visual_options['width'] > mqeconfig.DASHBOARD_COLS:
@@ -709,14 +701,19 @@ def pack_upwards_mod():
 
     def do_pack_upwards(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
-        for i, (tile_id, vo) in enumerate(layout_dict_items):
+        vo_indexer = VisualOptionsIndexer()
+        vo_indexer.add_layout_dict(layout_mod.layout.layout_dict)
+        for (tile_id, vo) in layout_dict_items:
             while True:
                 if vo['y'] <= 0:
                     break
+                vo_indexer.remove_visual_options(vo)
                 vo['y'] -= 1
-                if _visual_options_intersect(vo, [vo2 for tile_id, vo2 in util.without_idx(layout_dict_items, i)]):
+                if vo_indexer.intersects(vo):
                     vo['y'] += 1
+                    vo_indexer.add_visual_options(vo)
                     break
+                vo_indexer.add_visual_options(vo)
 
     return do_pack_upwards
 
@@ -727,14 +724,19 @@ def pack_leftwards_mod():
 
     def do_pack_leftwards(layout_mod):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'x')
-        for i, (ud, vo) in enumerate(layout_dict_items):
+        vo_indexer = VisualOptionsIndexer()
+        vo_indexer.add_layout_dict(layout_mod.layout.layout_dict)
+        for (tile_id, vo) in layout_dict_items:
             while True:
                 if vo['x'] <= 0:
                     break
+                vo_indexer.remove_visual_options(vo)
                 vo['x'] -= 1
-                if _visual_options_intersect(vo, [vo2 for ud, vo2 in util.without_idx(layout_dict_items, i)]):
+                if vo_indexer.intersects(vo):
                     vo['x'] += 1
+                    vo_indexer.add_visual_options(vo)
                     break
+                vo_indexer.add_visual_options(vo)
 
     return do_pack_leftwards
 
