@@ -631,18 +631,20 @@ class VisualOptionsIndexer(object):
             self.add_visual_options(vo)
 
     def _get_positions(self, vo):
-        res = set()
         for y in range(vo['y'], vo['y'] + vo['height']):
             y_mult = y * mqeconfig.DASHBOARD_COLS
             for x in range(vo['x'], vo['x'] + vo['width']):
-                res.add(y_mult + x)
-        return res
+                yield y_mult + x
 
     def add_visual_options(self, vo):
-        self.positions.update(self._get_positions(vo))
+        for pos in self._get_positions(vo):
+            self.positions.add(pos)
 
     def intersects(self, vo):
-        return not self.positions.isdisjoint(self._get_positions(vo))
+        for pos in self._get_positions(vo):
+            if pos in self.positions:
+                return True
+        return False
 
     def _xy_visual_options_first_match(vo_indexer, visual_options, start_x=0, start_y=0):
         for (x, y) in _gen_x_y(start_x, start_y):
