@@ -2,6 +2,7 @@ import unittest
 import json
 import uuid
 from collections import OrderedDict
+from time import time
 
 from mqe import c
 from mqe import tpcreator
@@ -15,7 +16,7 @@ from mqe.layouts import Layout
 from mqe import reports
 from mqe import sscreator
 
-from mqe.tests.tutil import new_report_data, patch, ReportData
+from mqe.tests.tutil import new_report_data, patch, ReportData, random_string
 
 
 class TPCreatorTest(unittest.TestCase):
@@ -572,6 +573,7 @@ class TPCreatorTest(unittest.TestCase):
         r = reports.Report.insert(owner_id, 'r')
         master_tile = Tile.insert(owner_id, r.report_id, dashboard_id, tile_config)
         layouts.place_tile(master_tile)
+
         ri1 = r.process_input('0', tags=['p1:11'],
                               handle_tpcreator=False).report_instance
         ri2 = r.process_input('0', tags=['p1:12'],
@@ -588,6 +590,43 @@ class TPCreatorTest(unittest.TestCase):
         layout = Layout.select(owner_id, dashboard_id)
         self.assertEqual(3, len(layout.layout_dict))
         self.assertEqual([['p1:10'], ['p1:11'], ['p1:12']], sorted(tile.tags for tile in layout.tile_dict))
+
+    @unittest.skip('Performance testing - run manually')
+    def test_tpcreator_as_mod_performance(self):
+        owner_id = uuid.uuid4()
+        dashboard_id = uuid.uuid4()
+        tile_config = {
+            'tags': ['str:sample_string'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {
+                'tpcreator_uispec': [{'tag': 'str:sample_string', 'prefix': 'str:'}],
+            }
+        }
+        r = reports.Report.insert(owner_id, 'r')
+        master_tile = Tile.insert(owner_id, r.report_id, dashboard_id, tile_config)
+        layouts.place_tile(master_tile)
+
+        strs = [random_string() for _ in xrange(199)]
+        mods = []
+        layout_rows = c.dao.LayoutDAO.select_layout_by_report_multi(owner_id, r.report_id,
+                                                                    [], 'tpcreator', 100)
+        start = time()
+        for str in strs:
+            res = r.process_input('1', tags=['str:%s' % str], handle_tpcreator=False)
+            mods.append(tpcreator.tpcreator_mod(res.report_instance, layout_rows[0], 200))
+        print 'Creating report instances took %.1f' % ((time() - start) * 1000)
+
+        start = time()
+        layouts.apply_mods(mods, owner_id, dashboard_id, None)
+        print 'Applying tpcreator_mods took %.1f' % ((time() - start) * 1000)
+
+        layout = Layout.select(owner_id, dashboard_id)
+        self.assertEqual(200, len(layout.layout_dict))
+        tags_set = {tile.tags[0].split(':')[1] for tile in layout.tile_dict}
+        self.assertEqual(200, len(tags_set))
+        self.assertEqual(tags_set, set(strs + ['sample_string']))
 
     def test_tpcreator_mod_with_sscreator_mod(self):
         owner_id = uuid.uuid4()

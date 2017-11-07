@@ -283,7 +283,7 @@ class RepackTest(unittest.TestCase):
         self.assertEqual([['p1:10'], ['p1:6'], ['p1:8'], ['p1:12']],
                          [tile.tags for tile in rd.tiles_sorted_by_vo()])
 
-    # @unittest.skip('Performance testing - run manually')
+    @unittest.skip('Performance testing - run manually')
     def test_repack_performance(self):
         rd = ReportData('r')
 

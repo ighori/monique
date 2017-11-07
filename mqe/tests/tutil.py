@@ -4,6 +4,8 @@ import json
 import sys
 from contextlib import contextmanager
 from collections import OrderedDict
+import random
+import string
 
 from mqe import reports
 from mqe import util
@@ -159,3 +161,7 @@ def logenabled(debug=True, cql=True):
     enable_logging(debug, cql)
     yield
     disable_logging()
+
+def random_string():
+    len = random.randrange(4, 15)
+    return ''.join(random.choice(string.digits + string.ascii_lowercase) for _ in xrange(len))
