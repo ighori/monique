@@ -29,6 +29,10 @@ LAYOUT_DICT = {
                                                    u'width': 1,
                                                    u'x': 0,
                                                    u'y': 2},
+  UUID('454687fa-01ad-4fee-99eb-c25073a26472'): {u'height': 3,
+                                                   u'width': 1,
+                                                   u'x': 0,
+                                                   u'y': 5},
 }
 
 
@@ -67,7 +71,7 @@ class PackingUpwardsTest(unittest.TestCase):
         ld = self.pack(LD2)
 
         ld_expected = deepcopy(LAYOUT_DICT)
-        ld_expected[ud] = {'height': 5, 'width': 3, 'x': 0, 'y': 5}
+        ld_expected[ud] = {'height': 5, 'width': 3, 'x': 0, 'y': 8}
         self.assertDictEqual(ld_expected, ld)
 
     def test_pack_floating_2(self):
@@ -279,7 +283,7 @@ class RepackTest(unittest.TestCase):
         self.assertEqual([['p1:10'], ['p1:6'], ['p1:8'], ['p1:12']],
                          [tile.tags for tile in rd.tiles_sorted_by_vo()])
 
-    @unittest.skip('Performance testing - run manually')
+    # @unittest.skip('Performance testing - run manually')
     def test_repack_performance(self):
         rd = ReportData('r')
 
@@ -295,7 +299,6 @@ class RepackTest(unittest.TestCase):
         tile = Tile.insert(rd.owner_id, rd.report_id, rd.dashboard_id, tile_config)
         place_tile(tile)
 
-        enable_logging(True, True)
         start = time()
         for i in range(1, 201):
             rd.report.process_input('1', tags=['p1:%s' % i])
