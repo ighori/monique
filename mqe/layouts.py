@@ -624,35 +624,34 @@ def replace_tiles_mod(old_to_new_tile_dict, sync_tpcreated=True, do_repacking=Tr
 class VisualOptionsIndexer(object):
 
     def __init__(self):
-        self.x_index = [0] * mqeconfig.DASHBOARD_COLS
-        self.y_index = []
+        self.positions = set()
 
     def add_layout_dict(self, layout_dict):
-        items = _sort_layout_items(layout_dict, 'y')
-        for tile_index, (tile_id, vo) in enumerate(items):
-            self.add_visual_options(tile_index, vo)
+        for vo in layout_dict.values():
+            self.add_visual_options(vo)
 
-    def add_visual_options(self, tile_index, vo):
-        tile_set = (1 << tile_index)
-        for x in range(vo['x'], vo['x'] + vo['width']):
-            self.x_index[x] |= tile_set
+    def _get_positions(self, vo):
+        res = set()
+        for y in range(vo['y'], vo['y'] + vo['height']):
+            y_mult = y * mqeconfig.DASHBOARD_COLS
+            for x in range(vo['x'], vo['x'] + vo['width']):
+                res.add(y_mult + x)
+        return res
 
-        max_y = vo['y'] + vo['height']
-        if len(self.y_index) < max_y:
-            for i in range(len(self.y_index), max_y):
-                self.y_index.append(0)
-
-        for y in range(vo['y'], max_y):
-            self.y_index[y] |= tile_set
+    def add_visual_options(self, vo):
+        self.positions.update(self._get_positions(vo))
 
     def intersects(self, vo):
-        for x in range(vo['x'], vo['x'] + vo['width']):
-            for y in range(vo['y'], vo['y'] + vo['height']):
-                if y >= len(self.y_index):
-                    continue
-                if self.x_index[x] & self.y_index[y] > 0:
-                    return True
-        return False
+        return not self.positions.isdisjoint(self._get_positions(vo))
+
+    def _xy_visual_options_first_match(vo_indexer, visual_options, start_x=0, start_y=0):
+        for (x, y) in _gen_x_y(start_x, start_y):
+            candidate = dict(visual_options, x=x, y=y)
+            if _visual_options_outside_of_screen(candidate):
+                continue
+            if vo_indexer.intersects(candidate):
+                continue
+            return candidate
 
 
 def _visual_options_intersect(visual_options, layout_dict_values):
@@ -813,7 +812,7 @@ def repack_mod(put_master_first=True):
         start_x = 0
         start_y = 0
         vo_indexer = VisualOptionsIndexer()
-        for tile_index, (tile_id, vo) in enumerate(layout_dict_items):
+        for (tile_id, vo) in layout_dict_items:
             new_vo = vo.copy()
             new_vo.pop('x', None)
             new_vo.pop('y', None)
@@ -821,7 +820,7 @@ def repack_mod(put_master_first=True):
             new_vo = _xy_visual_options_first_match(vo_indexer, new_vo, start_x, start_y)
 
             res[tile_id] = new_vo
-            vo_indexer.add_visual_options(tile_index, new_vo)
+            vo_indexer.add_visual_options(new_vo)
             start_x = new_vo['x']
             start_y = new_vo['y']
         layout_mod.layout.layout_dict = res
