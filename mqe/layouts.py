@@ -657,19 +657,6 @@ def _visual_options_outside_of_screen(visual_options):
     if visual_options['y'] < 0:
         return True
 
-def _visual_options_of_beside_or_below_last(layout_dict, visual_options):
-    last = max(layout_dict.values(), key=lambda vo: (vo['y'] + vo['height'], vo['x']))
-    beside_last_vo = dict(visual_options,
-                          x=last['x'] + last['width'],
-                          y=last['y'])
-    if not _visual_options_outside_of_screen(beside_last_vo) \
-            and not _visual_options_intersect(beside_last_vo, layout_dict.values()):
-        return beside_last_vo
-    below_last_vo = dict(visual_options,
-                         x=0,
-                         y=(max(vo['y'] + vo['height'] for vo in layout_dict.values())))
-    return below_last_vo
-
 def _gen_x_y(x=0, y=0):
     while True:
         yield (x, y)
