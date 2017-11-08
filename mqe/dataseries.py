@@ -401,23 +401,40 @@ def guess_series_spec(report, report_instance, sample_rowno, sample_colno):
     filtering_candidate_cols = [colno for colno in xrange(report_instance.table.num_columns) \
                                 if colno != sample_colno]
     def colno_score(colno):
+        """Compute a score telling how good is the colno as a filtering column"""
+
+        # if the label score for the sampled row is 0, it can't be a good filtering column
         if _label_score(row[colno]) == 0:
             return 0
+
+        # all values of the candidate column
         vals = [report_instance.table.rows[i][colno] for i in
                 report_instance.table.value_or_other_idxs]
+
+        # if less than half of column values are labels, it's not a good filtering column
         label_vals = [v for v in vals if _label_score(v) > 0]
         label_vals_factor = len(label_vals) / len(vals)
         if label_vals_factor < 0.5:
             return 0
+
+        # strings which are valid labels
         label_string_keys = [ev.to_string_key() for ev in label_vals]
 
+        # if the row can't be uniquely identified by the column, it's not a good filtering column
         row_occurrences = label_string_keys.count(row[colno].to_string_key())
         if row_occurrences != 1:
             return 0
 
+        # unique label values
         uniq_vals = util.uniq_sameorder(label_string_keys)
+
+        # if there's only one unique label for a report instance with more than one row,
+        # it's not a good filtering column
         if report_instance.table.num_rows > 1 and len(uniq_vals) == 1:
             return 0
+
+        # the resulting score combines the number of valid and unique labels and an average
+        # score for a label value
         return len(uniq_vals) * label_vals_factor * util.avg(_label_score(ev) for ev in label_vals)
 
     if filtering_candidate_cols:
