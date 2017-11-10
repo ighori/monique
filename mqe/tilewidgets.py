@@ -86,7 +86,8 @@ class DataPoint(object):
         else:
             self_value_item = self.value
             other_value_item = other.value
-        return cmp((self.rid, self_value_item), (other.rid, other_value_item))
+        return cmp((self.rid.time, self.rid, self_value_item),
+                   (other.rid.time, other.rid, other_value_item))
 
     def __hash__(self):
         return hash(self.rid)
