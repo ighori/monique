@@ -121,6 +121,7 @@ The library is designed with performance and scalability in mind:
 - each data point is extracted lazily from a table only once
 - the data points forming a data series are fetched using a single database query
 - the Cassandra backend partitions data into reports, tags and days, allowing practically unlimited amounts of data to be stored
+- database queries are executed in parallel where possible. For example, creating a tile containing 3 data series extracted from 1000 results of the `df` command takes about half a second (using Cassandra and PyPy).
 
 
 ## How the library can be used
