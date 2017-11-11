@@ -9,12 +9,13 @@ from mqe import dataseries
 from mqe import tilewidgets
 from mqe import tiles
 from mqe.tiles import Tile
-from mqe.tests.tutil import report_data, new_report_data
+from mqe.tests.tutil import report_data, new_report_data, ReportData
 from mqe import c
 from mqe import tpcreator
 from mqe.util import dictwithout, first
 from mqe.layouts import place_tile, detach_tile, Layout
 from mqe.dashboards import _select_tile_ids
+from mqe import util
 
 
 class TileTest(unittest.TestCase):
@@ -578,3 +579,37 @@ class TilesModuleTest(unittest.TestCase):
         self.assertEqual('tile2 [p1:11]', master1.tile_options['tile_title'])
         self.assertEqual('tile3', master2.tile_options['tile_title'])
 
+
+    def test_expire_tiles_without_data_losing_sscreated(self):
+        rd = ReportData('r')
+
+        ss = dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0']))
+        tile_config1 = {
+            'series_spec_list': [ss],
+            'tags': ['p1:10'],
+            'tile_options': {
+                'tpcreator_uispec': tpcreator.suggested_tpcreator_uispec(['p1:10']),
+                'sscs': ss
+            }
+        }
+
+        tile1 = Tile.insert(rd.owner_id, rd.report.report_id, rd.dashboard_id, tile_config1)
+        place_tile(tile1)
+
+        #rd.report.process_input('1', tags=['p1:10'])
+
+        rd.report.process_input('1\n2\n', tags=['p1:11'])
+        rd.report.process_input('1\n2\n3\n', tags=['p1:12'])
+
+        self.assertEqual(3, len(rd.layout().layout_dict))
+        self.assertEqual(3, len(rd.get_tile_by_tags(['p1:12']).series_specs()))
+
+        tile1_created_ago = datetime.datetime.utcnow() - util.datetime_from_uuid1(tile1.tile_id)
+        tiles.expire_tiles_without_data(rd.layout().tile_dict.keys(),
+             tile1_created_ago.total_seconds() - 0.00001, rd.layout().layout_id)
+        self.assertEqual(2, len(rd.layout().layout_dict))
+        self.assertTrue(rd.layout_has_tags([['p1:11'], ['p1:12']]))
+        master_tile = rd.get_tile_by_tags(['p1:11'])
+        self.assertTrue(master_tile.is_master_tile())
+        self.assertEqual(master_tile.tile_id, rd.get_tile_by_tags(['p1:12']).get_master_tile_id())
+        self.assertEqual(3, len(rd.get_tile_by_tags(['p1:12']).series_specs()))

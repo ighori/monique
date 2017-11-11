@@ -88,6 +88,12 @@ class ReportData(object):
                 return tile
         return None
 
+    def layout_has_tags(self, tags_list):
+        present_tags = set()
+        for tile in self.layout().tile_dict:
+            present_tags.add(tuple(tile.tags))
+        return present_tags == set(tuple(tags) for tags in tags_list)
+
 
 class CustomData(object):
     """Similar to :class:`ReportData`, but requires passing a list of input string
