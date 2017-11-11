@@ -11,6 +11,7 @@ from mqe.tiles import Tile
 from mqe import tpcreator
 from mqe import c
 from mqe.reports import Report
+from mqe import sscreator
 
 from mqe.tests.tutil import call, ReportData, enable_logging
 from mqe.tests import tiles_test
@@ -462,6 +463,44 @@ class RepackTest(unittest.TestCase):
                 self.assertEqual(master1.tile_id, tile.get_master_tile_id())
             elif tile.tags[0].startswith('q') and tile.tile_id != master2.tile_id:
                 self.assertEqual(master2.tile_id, tile.get_master_tile_id())
+
+    def test_promote_first_as_master_losing_sscreated(self):
+        rd = ReportData('r')
+
+        ss = dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0']))
+        tile_config1 = {
+            'series_spec_list': [ss],
+            'tags': ['p1:10'],
+            'tile_options': {
+                'tpcreator_uispec': tpcreator.suggested_tpcreator_uispec(['p1:10']),
+                'sscs': ss
+            }
+        }
+
+        tile1 = Tile.insert(rd.owner_id, rd.report.report_id, rd.dashboard_id, tile_config1)
+        place_tile(tile1)
+
+        ri1 = rd.report.process_input('1\n2\n', tags=['p1:9'],
+                                      handle_tpcreator=False, handle_sscreator=False).report_instance
+        ri2 = rd.report.process_input('1\n2\n3\n', tags=['p1:12'],
+                                      handle_tpcreator=False, handle_sscreator=False).report_instance
+
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri1, make_first_master=False)
+        sscreator.handle_sscreator(rd.owner_id, rd.report_id, ri1)
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri2, make_first_master=False)
+        sscreator.handle_sscreator(rd.owner_id, rd.report_id, ri2)
+
+        self.assertEqual(3, len(rd.layout().layout_dict))
+        self.assertEqual(3, len(rd.get_tile_by_tags(['p1:12']).series_specs()))
+
+        ri3 = rd.report.process_input('1\n2\n3\n', tags=['p1:13'], handle_tpcreator=False).report_instance
+        tpcreator.handle_tpcreator(rd.owner_id, rd.report_id, ri3, make_first_master=True)
+
+        self.assertEqual(4, len(rd.layout().layout_dict))
+        master_tile = rd.get_tile_by_tags(['p1:9'])
+        self.assertTrue(master_tile.is_master_tile())
+        self.assertEqual(master_tile.tile_id, rd.get_tile_by_tags(['p1:12']).get_master_tile_id())
+        self.assertEqual(3, len(rd.get_tile_by_tags(['p1:12']).series_specs()))
 
 
 class LayoutClassTest(unittest.TestCase):
