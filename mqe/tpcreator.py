@@ -9,6 +9,7 @@ from mqe import util
 from mqe import mqeconfig
 from mqe.signals import fire_signal, layout_modified
 from mqe import layouts
+from mqe import dataseries
 
 
 log = logging.getLogger('mqe.tpcreator')
@@ -215,13 +216,22 @@ def _get_tpcreator_data(layout_mod, report_id):
 
     return tpcreator_spec_by_master_id, tpcreated_tags_by_master_id
 
+def _unique_series_specs(ss_list):
+    return util.uniq_sameorder(ss_list,
+                               key=lambda ss: dataseries.series_spec_for_default_options(ss))
 
-def _tile_options_of_tpcreated(master_tile, tpcreator_spec, tags):
+def _tile_options_of_tpcreated(master_tile, tpcreator_spec, tags, old_tpcreated=None):
+    if old_tpcreated is not None:
+        series_specs = _unique_series_specs(master_tile.series_specs() + \
+                                            old_tpcreated.series_specs())
+    else:
+        series_specs = master_tile.series_specs()
+
     partial_new_tile = Tile.insert(master_tile.owner_id, master_tile.report_id,
         master_tile.dashboard_id, skip_db=True, tile_config={
             'tw_type': master_tile.tile_options['tw_type'],
             'tags': tags,
-            'series_spec_list': master_tile.series_specs(),
+            'series_spec_list': series_specs,
             'tile_options': {k: v for k, v in master_tile.tile_options.items()
                                   if k not in {'series_configs', 'tags', 'tile_title'}}
     })
@@ -269,7 +279,7 @@ def replace_tpcreated(layout, old_master, new_master, sync_tpcreated=True,
     tpcreated_tiles_new_tos = []
     for tile in tpcreated_tiles.itervalues():
         if sync_tpcreated:
-            to = _tile_options_of_tpcreated(new_master, tpcreator_spec, tile.tags)
+            to = _tile_options_of_tpcreated(new_master, tpcreator_spec, tile.tags, tile)
         else:
             to = _sync_tpcreator_data(new_master, tile, tpcreator_spec)
         tpcreated_tiles_new_tos.append(to)
@@ -319,7 +329,7 @@ def make_tpcreated_from_master(old_master, new_master):
 
     tpcreator_spec = tpcreator_spec_from_tpcreator_uispec(
         new_master.tile_options['tpcreator_uispec'])
-    to = _tile_options_of_tpcreated(new_master, tpcreator_spec, old_master.tags)
+    to = _tile_options_of_tpcreated(new_master, tpcreator_spec, old_master.tags, old_master)
     return Tile.insert_with_tile_options(old_master.dashboard_id, to)
 
 

@@ -502,6 +502,9 @@ class RepackTest(unittest.TestCase):
         self.assertEqual(master_tile.tile_id, rd.get_tile_by_tags(['p1:12']).get_master_tile_id())
         self.assertEqual(3, len(rd.get_tile_by_tags(['p1:12']).series_specs()))
 
+        self.assertEqual(['0', '1', '2'], [ss.params['filtering_expr']['args'][0]
+                                           for ss in rd.get_tile_by_tags(['p1:12']).series_specs()])
+
 
 class LayoutClassTest(unittest.TestCase):
 
