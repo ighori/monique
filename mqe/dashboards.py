@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 
 from mqe import c
 from mqe import serialize
@@ -159,16 +160,25 @@ class OwnerDashboards(object):
         """Returns a list of :class:`Dashboard` objects that contain a tile
         displaying the given report.
         """
+        return self.get_dashboards_by_report_id().get(report_id, [])
+
+    def get_dashboards_by_report_id(self):
+        """Returns a dict mapping a report ID to a list of :class:`Dashboard` objects
+        that contain a tile displaying the report having the ID.
+        """
         from mqe import layouts
 
-        res = []
+        res = defaultdict(list)
+        res_sets = defaultdict(set)
         layout_list = layouts.Layout.select_multi(self.owner_id,
                                                   [d.dashboard_id for d in self.dashboards])
         for layout in layout_list:
             if not layout:
                 continue
             for tile_id, props in layout.layout_props['by_tile_id'].items():
-                if props.get('report_id') == report_id:
-                    res.append(self.dashboard_by_id[layout.dashboard_id])
-                    break
+                report_id = props.get('report_id')
+                dashboard = self.dashboard_by_id.get(layout.dashboard_id)
+                if report_id and dashboard and dashboard not in res_sets[report_id]:
+                    res[report_id].append(dashboard)
+                    res_sets[report_id].add(dashboard)
         return res

@@ -132,6 +132,34 @@ class OwnerDashboardsTest(unittest.TestCase):
         self.assertEqual(0, len(res))
 
 
+    def test_get_dashboards_by_report_id(self):
+        od = self.test_inserting()
+
+        res = od.get_dashboards_by_report_id()
+        self.assertEqual({}, res)
+
+        r = Report.insert(od.owner_id, 'r')
+        r2 = Report.insert(od.owner_id, 'r2')
+        r3 = Report.insert(od.owner_id, 'r3')
+        tile_config = {
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+        }
+
+        place_tile(Tile.insert(od.owner_id, r.report_id, od.dashboards[3].dashboard_id, tile_config))
+        place_tile(Tile.insert(od.owner_id, r.report_id, od.dashboards[3].dashboard_id, tile_config))
+        place_tile(Tile.insert(od.owner_id, r.report_id, od.dashboards[0].dashboard_id, tile_config))
+        place_tile(Tile.insert(od.owner_id, r2.report_id, od.dashboards[0].dashboard_id, tile_config))
+        place_tile(Tile.insert(od.owner_id, r3.report_id, od.dashboards[1].dashboard_id, tile_config))
+
+        res = od.get_dashboards_by_report_id()
+        self.assertEqual(3, len(res))
+        self.assertEqual([od.dashboards[0], od.dashboards[3]], res[r.report_id])
+        self.assertEqual([od.dashboards[0]], res[r2.report_id])
+        self.assertEqual([od.dashboards[1]], res[r3.report_id])
+
+
 class DashboardTest(unittest.TestCase):
 
     def test_select(self):
