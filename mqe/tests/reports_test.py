@@ -121,6 +121,25 @@ class ReportTest(unittest.TestCase):
         ris = r.fetch_instances(after=all_ris[-3].report_instance_id, before=all_ris[-1].report_instance_id)
         self.assertEqual('6'.split(), [ri['input_string'] for ri in ris])
 
+    def _use_fetch_instances_iter(self, test_fun, chunk_size=None):
+        try:
+            old_method = Report.fetch_instances
+            old_chunk_size = reports.FETCH_INSTANCES_ITER_CHUNK_SIZE
+
+            Report.fetch_instances = lambda *args, **kwargs: \
+                list(Report.fetch_instances_iter(*args, **kwargs))
+            if chunk_size is not None:
+                reports.FETCH_INSTANCES_ITER_CHUNK_SIZE = chunk_size
+
+            test_fun()
+        finally:
+            Report.fetch_instances = old_method
+            reports.FETCH_INSTANCES_ITER_CHUNK_SIZE = chunk_size
+
+    def test_fetch_instances_iter(self):
+        self._use_fetch_instances_iter(self.test_fetch_instances)
+        self._use_fetch_instances_iter(self.test_fetch_instances, 1)
+
     def test_fetch_instances_same_dt(self):
         owner_id = uuid.uuid1()
         r = reports.Report.insert(owner_id, 'rname')
@@ -146,6 +165,10 @@ class ReportTest(unittest.TestCase):
         if ris:
             print ris[0].input_string
         self.assertEqual(0, len(ris))
+
+    def test_fetch_instances_same_dt_iter(self):
+        self._use_fetch_instances_iter(self.test_fetch_instances_same_dt)
+        self._use_fetch_instances_iter(self.test_fetch_instances_same_dt, 5)
 
     def create_multi_day_report(self):
         owner_id = uuid.uuid4()
@@ -210,6 +233,10 @@ class ReportTest(unittest.TestCase):
 
         ris = r.fetch_instances(before=all_ris[5].report_instance_id)
         self.assertEqual(5, len(ris))
+
+    def test_fetch_instances_multiple_days_iter(self):
+        self._use_fetch_instances_iter(self.test_fetch_instances_multiple_days)
+        self._use_fetch_instances_iter(self.test_fetch_instances_multiple_days, 1)
 
     def test_fetch_single_instance(self):
         r, all_ris = self.create_multi_day_report()

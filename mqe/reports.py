@@ -18,6 +18,7 @@ log = logging.getLogger('mqe.reports')
 
 
 DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE = 2000
+FETCH_INSTANCES_ITER_CHUNK_SIZE = 2000
 
 
 
@@ -305,6 +306,41 @@ class Report(Row):
                 columns=columns, order=order, limit=limit)
         return [ReportInstance(row) for row in rows]
 
+    def fetch_instances_iter(self, from_dt=None, to_dt=None, before=None, after=None, tags=None, columns=None,  order='asc', limit=100):
+        """The same as :meth:`fetch_instances`, but returns an iterator yielding :class:`ReportInstance`
+        objects instead of a complete list. The method might take longer time to fetch all results,
+        because it retrieves data in chunks, but ensures memory usage will not increase by much (if the
+        results will be not be stored in a list).
+        """
+        if columns and 'report_instance_id' not in columns:
+            columns.append('report_instance_id')
+
+        min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
+        current_min_uuid = min_uuid
+        current_max_uuid = max_uuid
+
+        num_fetched = 0
+        while True:
+            max_to_fetch = limit - num_fetched
+            if max_to_fetch <= 0:
+                break
+            current_limit = min(max_to_fetch, FETCH_INSTANCES_ITER_CHUNK_SIZE)
+            current_rows = c.dao.ReportInstanceDAO.select_multi(report_id=self.report_id, tags=tags,
+                        min_report_instance_id=current_min_uuid,
+                        max_report_instance_id=current_max_uuid,
+                        columns=columns, order=order, limit=current_limit)
+            if not current_rows:
+                break
+
+            for row in current_rows:
+                yield ReportInstance(row)
+
+            if order == 'asc':
+                current_min_uuid = current_rows[-1]['report_instance_id']
+            elif order == 'desc':
+                current_max_uuid = current_rows[-1]['report_instance_id']
+
+            num_fetched += len(current_rows)
 
     def fetch_single_instance(self, report_instance_id, tags=None):
         """Fetch a single report instance with the given ID and tags (returns ``None`` if such
