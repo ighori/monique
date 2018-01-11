@@ -123,7 +123,14 @@ def execute_lwt(fun):
         return None
 
 
-### time60 functions operating on 60-bit timestamps
+def dict_factory(colnames, rows):
+    res = []
+    for row in rows:
+        d = util.create_small_dict()
+        for i, colname in enumerate(colnames):
+            d[colname] = row[i]
+        res.append(d)
+    return res
 
 
 class Cassandra(object):
@@ -161,7 +168,7 @@ class Cassandra(object):
             else:
                 raise
         csession.default_fetch_size = FETCH_SIZE
-        csession.row_factory = cassandra.query.dict_factory
+        csession.row_factory = dict_factory
         return csession
 
     def _assure_is_prepared(self, query, consistency_level):

@@ -16,6 +16,14 @@ import logging
 import pytz
 
 
+try:
+    import __pypy__
+except ImportError:
+    is_pypy = False
+else:
+    is_pypy = True
+
+
 class Undefined(object):
     def __repr__(self):
         return '<undefined>'
@@ -231,6 +239,16 @@ def common_value(seq):
         if cv._value is None:
             break
     return cv.value
+
+
+# dict optimized for small numbers of keys
+
+if is_pypy:
+    from __pypy__ import newdict
+    create_small_dict = lambda: newdict('instance')
+else:
+    create_small_dict = dict
+
 
 
 ### string
