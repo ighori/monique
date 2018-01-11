@@ -707,7 +707,8 @@ def get_series_values_after(series_def, report, after,
 
     rows = c.dao.SeriesValueDAO.select_multi(series_def.series_id, after, max_report_instance_id, limit)
     log.debug('Selected %d series_values after series_id=%s report_name=%r',
-              len(rows), series_def.series_id, report.report_name)
+              len(rows) if isinstance(rows, list) else '?',
+              series_def.series_id, report.report_name)
     return list(reversed([SeriesValue(row) for row in rows]))
 
 

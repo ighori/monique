@@ -435,6 +435,7 @@ class CassReportInstanceDAO(ReportInstanceDAO):
                                      AND report_instance_id > ? AND report_instance_id < ?""",
                                       [report_id, days, min_report_instance_id,
                                        max_report_instance_id])
+            rim_rows = list(rim_rows)
             assert len(rim_rows) == len(ris)
 
             ri_by_rid = {ri['report_instance_id']: ri for ri in ris}
