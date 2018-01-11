@@ -9,7 +9,7 @@ from mqe import tpcreator
 from mqe import dataseries
 from mqe.tiles import expire_tiles_without_data
 from mqe.tiles import Tile
-from mqe.dashboards import _select_tile_ids
+from mqe.dashboards import _select_tile_ids, OwnerDashboards
 from mqe import util
 from mqe import layouts
 from mqe.layouts import Layout
@@ -484,6 +484,40 @@ class TPCreatorTest(unittest.TestCase):
                                                              master_tile_1.report_id, [], 'tpcreator', 100)
         self.assertFalse(rows)
 
+
+    def test_deleting_layout_by_report_row_after_deleting_dashboard(self):
+        owner_id = uuid.uuid1()
+        od = OwnerDashboards(owner_id)
+        r = reports.Report.insert(owner_id, 'r')
+        tile_config = {
+            'tw_type': 'Single',
+            'tags': ['p1:10'],
+            'series_spec_list': [
+                dataseries.SeriesSpec(0, -1, dict(op='eq', args=['0'])),
+            ],
+            'tile_options': {}
+        }
+        tile_config['tile_options']['tpcreator_uispec'] = tpcreator.suggested_tpcreator_uispec([
+            'p1:10'])
+
+        master_tile_1 = Tile.insert(owner_id, r.report_id, od.dashboards[0].dashboard_id, tile_config)
+        layouts.place_tile(master_tile_1)
+
+        r.process_input('1', tags=['p1:11'])
+
+        self.assertEqual(2, len(Layout.select(master_tile_1.owner_id, master_tile_1.dashboard_id).layout_dict))
+
+        rows = c.dao.LayoutDAO.select_layout_by_report_multi(master_tile_1.owner_id,
+                                                             master_tile_1.report_id, [], 'tpcreator', 100)
+        self.assertTrue(rows)
+
+        od.dashboards[0].delete()
+
+        r.process_input('1', tags=['p1:12'])
+
+        rows = c.dao.LayoutDAO.select_layout_by_report_multi(master_tile_1.owner_id,
+                                                             master_tile_1.report_id, [], 'tpcreator', 100)
+        self.assertFalse(rows)
 
     def test_multiple_tags_order(self):
         tile_config = {
