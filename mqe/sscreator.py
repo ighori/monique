@@ -53,8 +53,8 @@ def sscreator_mod(report_instance, layout_row):
 
         if not any_sscs_found:
             log.info('Deleting obsoleted layout_by_report sscs row')
-            c.dao.LayoutDAO.delete_layout_by_report(layout_mod.layout.owner_id,
-                report_instance.report_id, layout_row['tags'], layout_row['label'],
+            c.dao.LayoutDAO.delete_layout_by_report(layout_row['owner_id'],
+                layout_row['report_id'], layout_row['tags'], layout_row['label'],
                 layout_row['dashboard_id'], layout_row['layout_id'])
             return
 

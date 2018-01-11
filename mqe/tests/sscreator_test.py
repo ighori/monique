@@ -145,7 +145,9 @@ class SSCSTest(unittest.TestCase):
 
     def test_sscs_virtual_column(self):
         owner_id = uuid.uuid1()
-        dashboard_id = uuid.uuid1()
+        od = dashboards.OwnerDashboards(owner_id)
+        dashboard_id = od.dashboards[0].dashboard_id
+
         r = Report.insert(owner_id, 'r')
         tile_config = {
             'tw_type': 'Single',
@@ -216,15 +218,15 @@ class SSCSTest(unittest.TestCase):
 
         layout3 = Layout.select(tile.owner_id, dashboard_id_3)
         self.assertEqual(1, len(layout3.layout_dict))
-        self.assertEqual(5, len(layout3.tile_dict.keys()[0].series_specs()))
 
         layout2 = Layout.select(tile.owner_id, dashboard_id_2)
         self.assertEqual(1, len(layout2.layout_dict))
-        self.assertEqual(5, len(layout2.tile_dict.keys()[0].series_specs()))
 
         layout1 = Layout.select(tile.owner_id, dashboard_id_1)
         self.assertEqual(1, len(layout1.layout_dict))
-        self.assertEqual(6, len(layout1.tile_dict.keys()[0].series_specs()))
+
+        self.assertEqual([5, 5, 6], sorted(len(layout_x.tile_dict.keys()[0].series_specs())
+                                           for layout_x in (layout1, layout2, layout3)))
 
         mock_data = {'call': 0}
         def mock__set_new_layout(*args, **kwargs):
@@ -267,6 +269,28 @@ class SSCSTest(unittest.TestCase):
         rows = c.dao.LayoutDAO.select_layout_by_report_multi(tile.owner_id,
                                                              tile.report_id, [], 'sscs', 100)
         self.assertFalse(rows)
+
+    def test_deleting_layout_by_report_row_after_deleting_dashboard(self):
+        tile, report = self.test_sscs_virtual_column()
+        report.process_input('3\n4\n5\n6')
+
+        tile = Tile.select(tile.dashboard_id, Layout.select(tile.owner_id, tile.dashboard_id).layout_dict.keys()[0])
+        self.assertEqual(4, len(tile.series_specs()))
+
+        od = dashboards.OwnerDashboards(tile.owner_id)
+        for db in od.dashboards:
+            db.delete()
+
+        rows = c.dao.LayoutDAO.select_layout_by_report_multi(tile.owner_id,
+                                                             tile.report_id, [], 'sscs', 100)
+        self.assertTrue(rows)
+
+        report.process_input('3\n4\n5\n6\n7\n8')
+
+        rows = c.dao.LayoutDAO.select_layout_by_report_multi(tile.owner_id,
+                                                             tile.report_id, [], 'sscs', 100)
+        self.assertFalse(rows)
+
 
     def test_sscreator_as_mod(self):
         owner_id = uuid.uuid4()
