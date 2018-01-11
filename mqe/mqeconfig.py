@@ -93,7 +93,13 @@ DAO_MODULES = [
 
 try:
     import mqeconfig_override
+
+    try:
+        reload
+    except NameError:
+        from importlib import reload
     reload(mqeconfig_override)
+
     from mqeconfig_override import *
 except ImportError:
     pass

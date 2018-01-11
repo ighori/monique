@@ -25,6 +25,42 @@ else:
     is_pypy = True
 
 
+### py2-3 compatability
+
+
+is_py3 = sys.version_info[0] == 3
+
+
+if is_py3:
+    bin_type = bytes
+    text_type = str
+else:
+    bin_type = str
+    text_type = unicode
+
+
+def is_basestring(s):
+    return isinstance(s, (bin_type, text_type))
+
+
+if is_py3:
+    range = range
+else:
+    range = xrange
+
+
+if is_py3:
+    itervalues = lambda d: d.values()
+    iteritems = lambda d: d.items()
+    iterkeys = lambda d: d.keys()
+else:
+    itervalues = lambda d: d.itervalues()
+    iteritems = lambda d: d.iteritems()
+    iterkeys = lambda d: d.iterkeys()
+
+
+### misc classes
+
 class Undefined(object):
     def __repr__(self):
         return '<undefined>'
