@@ -642,10 +642,10 @@ class Sqlite3SeriesDefDAO(SeriesDefDAO):
 
 class Sqlite3SeriesValueDAO(SeriesValueDAO):
 
-    def insert_multi(self, series_id, data):
+    def insert_multi(self, series_id, data_it):
         q = """INSERT OR IGNORE INTO series_value (series_id, report_instance_id, json_value, header) VALUES (?, ?, ?, ?)"""
         params_list = []
-        for d in data:
+        for d in data_it:
             params_list.append([series_id, d['report_instance_id'], d['json_value'],
                                d.get('header')])
         with cursor() as cur:

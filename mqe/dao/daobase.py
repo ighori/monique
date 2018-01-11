@@ -324,8 +324,8 @@ class SeriesValueDAO(BaseDAO):
     * header text
 
     """
-    def insert_multi(self, series_id, data):
-        """Insert series_value rows. ``data`` is a list of dictionaries having the keys: ``report_instance_id``, ``json_value``, ``header``. The existing rows with matching
+    def insert_multi(self, series_id, data_it):
+        """Insert series_value rows. ``data_it`` is an iterator yielding a dictionary having the keys: ``report_instance_id``, ``json_value``, ``header``. The existing rows with matching
         ``series_id``, ``report_instance_id`` values should be replaced."""
         raise NotImplementedError()
 

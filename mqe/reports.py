@@ -296,6 +296,9 @@ class Report(Row):
             fetch
         :return: a list of :class:`ReportInstance` objects
         """
+        if columns and 'report_instance_id' not in columns:
+            columns.append('report_instance_id')
+
         min_uuid, max_uuid = self._min_max_uuid_from_args(from_dt, to_dt, before, after)
 
         rows = c.dao.ReportInstanceDAO.select_multi(report_id=self.report_id, tags=tags,
@@ -309,6 +312,8 @@ class Report(Row):
         because it retrieves data in chunks, but ensures memory usage will not increase by much (if the
         results will be not be stored in a list).
         """
+        assert limit is not None
+
         if columns and 'report_instance_id' not in columns:
             columns.append('report_instance_id')
 

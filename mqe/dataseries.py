@@ -578,30 +578,40 @@ def insert_series_values(series_def, report, from_dt, to_dt, after=None, limit=N
               'to_dt=%s after=%s limit=%s', report.report_id, series_def.from_dt,
               series_def.to_dt, from_dt, to_dt, after, limit)
 
-    instances = report.fetch_instances(after=after,
-                                       from_dt=from_dt if not after else None,
-                                       to_dt=to_dt if not after else None,
-                                       limit=limit or mqeconfig.MAX_SERIES_POINTS,
-                                       tags=series_def.tags,
-                                       columns=['report_instance_id', 'ri_data'])
-    if not instances:
-        return
-    data = []
-    for ri in instances:
-        cell = series_def.series_spec.get_cell(ri)
-        if cell:
-            row = dict(report_instance_id=ri.report_instance_id,
-                       json_value=serialize.mjson(cell.value))
-            header = ri.table.header(cell.colno)
-            if header:
-                row['header'] = header
-            data.append(row)
-    log.info('Inserting %d series values from %d instances report_name=%r series_id=%s',
-             len(data), len(instances), report.report_name, series_def.series_id)
-    c.dao.SeriesValueDAO.insert_multi(series_def.series_id, data)
+    instances_it = report.fetch_instances_iter(after=after,
+                                               from_dt=from_dt if not after else None,
+                                               to_dt=to_dt if not after else None,
+                                               limit=limit or mqeconfig.MAX_SERIES_POINTS,
+                                               tags=series_def.tags,
+                                               columns=['report_instance_id', 'ri_data'])
+    info = dict(oldest_rid_fetched=None,
+                newest_rid_fetched=None,
+                count=0)
 
-    oldest_rid_fetched = instances[0].report_instance_id
-    newest_rid_fetched = instances[-1].report_instance_id
+    def rows_it():
+        for ri in instances_it:
+            if info['oldest_rid_fetched'] is None:
+                info['oldest_rid_fetched'] = ri.report_instance_id
+            info['newest_rid_fetched'] = ri.report_instance_id
+            info['count'] += 1
+
+            cell = series_def.series_spec.get_cell(ri)
+            if cell:
+                row = dict(report_instance_id=ri.report_instance_id,
+                           json_value=serialize.mjson(cell.value))
+                header = ri.table.header(cell.colno)
+                if header:
+                    row['header'] = header
+                yield row
+
+    c.dao.SeriesValueDAO.insert_multi(series_def.series_id, rows_it())
+
+    if info['count'] == 0:
+        return
+
+    log.info('Inserted %d series values report_name=%r series_id=%s',
+             info['count'], report.report_name, series_def.series_id)
+
 
     # from_rid stores minimal uuid from dt for which we fetched instances,
     # while to_rid stores an actual latest report_instance_id in the series.
@@ -609,7 +619,7 @@ def insert_series_values(series_def, report, from_dt, to_dt, after=None, limit=N
     if from_dt is not None:
         oldest_rid_stored = util.min_uuid_with_dt(from_dt)
     else:
-        oldest_rid_stored = oldest_rid_fetched
+        oldest_rid_stored = info['oldest_rid_fetched']
 
     if series_def.from_rid is None or \
             util.uuid_lt(oldest_rid_stored, series_def.from_rid):
@@ -618,10 +628,10 @@ def insert_series_values(series_def, report, from_dt, to_dt, after=None, limit=N
         series_def.update_from_rid(oldest_rid_stored)
 
     if series_def.to_rid is None or \
-            util.uuid_lt(series_def.to_rid, newest_rid_fetched):
+            util.uuid_lt(series_def.to_rid, info['newest_rid_fetched']):
         log.debug('Updating series_def_id=%s to_rid_dt=%s', series_def.series_id,
-                  util.datetime_from_uuid1(newest_rid_fetched))
-        series_def.update_to_rid(newest_rid_fetched)
+                  util.datetime_from_uuid1(info['newest_rid_fetched']))
+        series_def.update_to_rid(info['newest_rid_fetched'])
 
 
 def get_series_values(series_def, report, from_dt, to_dt,

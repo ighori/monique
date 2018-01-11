@@ -12,6 +12,7 @@ import calendar
 import importlib
 import sys
 import logging
+import itertools
 
 import pytz
 
@@ -126,6 +127,14 @@ def chunks(l, n, fill_gen=None):
         if fill_gen is not None:
             fill_to_len(chunk, n, fill_gen)
         yield chunk
+
+
+def chunks_it(iterable, n):
+    while True:
+        res = list(itertools.islice(iterable, n))
+        if not res:
+            return
+        yield res
 
 def first(iterable, default=None, key=None):
     if key is None:

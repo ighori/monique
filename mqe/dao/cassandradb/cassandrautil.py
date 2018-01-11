@@ -212,18 +212,23 @@ class Cassandra(object):
             self._log_end()
 
     def _execute_parallel_list(self, queries):
-        queries = [self._assure_is_prepared(query, DEFAULT_CONSISTENCY_LEVEL) for query in queries]
+        if isinstance(queries, (list, tuple)):
+            queries = iter(queries)
+
         def do():
             res = []
-            for chunk in util.chunks(queries, PARALLEL_QUERIES_CHUNK_SIZE):
+            for chunk in util.chunks_it(queries, PARALLEL_QUERIES_CHUNK_SIZE):
+                chunk = [self._assure_is_prepared(query, DEFAULT_CONSISTENCY_LEVEL) for query in chunk]
+                if mqeconfig.DEBUG_QUERIES:
+                    for query in chunk:
+                        self._log_start(query, None)
+
                 futures = [self.session.execute_async(query) for query in chunk]
                 res.extend([self._postprocess_result(f.result()) for f in futures])
             return res
         if not mqeconfig.DEBUG_QUERIES:
             return do()
-        log.info('Starting parallel execution of %s queries', len(queries))
-        for query in queries:
-            self._log_start(query, None)
+        log.info('Starting parallel execution of queries')
         self._start = time.time()
         try:
             return do()
@@ -247,11 +252,9 @@ class Cassandra(object):
          If ``queries`` is a dict mapping a query name to a query, return a dict mapping a query name to results.
 
          The type of each result is the same as for :meth:`execute`. The method executes up to :attr:`mqeconfig.PARALLEL_QUERIES_CHUNK_SIZE` simultaneous queries."""
-        if isinstance(queries, (list, tuple)):
-            return self._execute_parallel_list(queries)
         if isinstance(queries, dict):
             return self._execute_parallel_dict(queries)
-        assert False, 'queries must a list or a dict'
+        return self._execute_parallel_list(queries)
 
     def execute_fst(self, *args, **kwargs):
         """Execute the query by passing arguments to :meth:`execute` and return the first row from the result. If the result is empty, return a sentinel *non-existing* row which behaves like a dict which has ``None`` values for all keys. The presence of the sentinel row can be also checked with :func:`is_nonexisting`.

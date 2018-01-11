@@ -710,11 +710,12 @@ class CassSeriesDefDAO(SeriesDefDAO):
 class CassSeriesValueDAO(SeriesValueDAO):
 
     def insert_multi(self, series_id, data):
-        qs = []
-        for row in data:
-            row['series_id'] = series_id
-            qs.append(insert('mqe.series_value', row))
-        c.cass.execute_parallel(qs)
+        def qs_it():
+            for row in data:
+                row['series_id'] = series_id
+                yield insert('mqe.series_value', row)
+
+        c.cass.execute_parallel(qs_it())
 
     def select_multi(self, series_id, min_report_instance_id, max_report_instance_id, limit):
         q = """SELECT report_instance_id, json_value, header
