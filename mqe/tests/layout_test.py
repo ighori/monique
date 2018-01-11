@@ -13,8 +13,7 @@ from mqe import c
 from mqe.reports import Report
 from mqe import sscreator
 
-from mqe.tests.tutil import call, ReportData, enable_logging
-from mqe.tests import tiles_test
+from mqe.tests.tutil import call, ReportData
 
 
 LAYOUT_DICT = {
@@ -114,6 +113,8 @@ class PackingLeftwardsTest(unittest.TestCase):
 class TilePlacingDetachingTest(unittest.TestCase):
 
     def test_place(self):
+        from mqe.tests import tiles_test
+
         tile = call(tiles_test.TileTest.test_insert, dashboard_id=uuid.uuid1())
         res = place_tile(tile)
         self.assertIsNotNone(res)
@@ -124,6 +125,8 @@ class TilePlacingDetachingTest(unittest.TestCase):
         self.assertEqual({tile.tile_id: vo}, layout.layout_dict)
 
     def place(self, dashboard_id, **kwargs):
+        from mqe.tests import tiles_test
+
         tile = call(tiles_test.TileTest.test_insert, dashboard_id=dashboard_id)
         res = place_tile(tile, **kwargs)
         self.assertIsNotNone(res)
@@ -133,6 +136,8 @@ class TilePlacingDetachingTest(unittest.TestCase):
         return dict(zip([t.tile_id for t in tiles], vos))
 
     def test_place_wrong_id(self):
+        from mqe.tests import tiles_test
+
         dashboard_id = uuid.uuid1()
         tile = self.place(dashboard_id)
         layout = Layout.select(tile.owner_id, tile.dashboard_id)
@@ -204,6 +209,8 @@ class TilePlacingDetachingTest(unittest.TestCase):
               ), layout.layout_dict)
 
     def test_detach_all_and_attach(self):
+        from mqe.tests import tiles_test
+
         tiles = self.test_place_multiple()
         dashboard_id = tiles[0].dashboard_id
         for t in tiles:

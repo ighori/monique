@@ -12,8 +12,7 @@ from mqe import dataseries
 from mqe.dataseries import guess_series_spec
 from mqe.util import dictwithout, MIN_UUID
 
-from mqe.tests.tutil import report_data, CustomData, call, enable_logging
-from mqe.tests import tiles_test
+from mqe.tests.tutil import report_data, CustomData, call
 
 utcnow = datetime.datetime.utcnow
 
@@ -473,6 +472,8 @@ class DefaultOptionsTest(unittest.TestCase):
             self.assertEqual(i, d[ss])
 
     def test_colors(self):
+        from mqe.tests import tiles_test
+
         tile = call(tiles_test.TileTest.test_insert, tile_options_ext={'colors': ['red', 'blue']})
         update_default_options(tile)
         default_options = select_default_series_spec_options(tile.report_id, tile.series_specs())
@@ -494,6 +495,8 @@ class DefaultOptionsTest(unittest.TestCase):
         self.assertEqual([{'color': 'pink'}, {'color': 'blue'}], default_options)
 
     def test_names(self):
+        from mqe.tests import tiles_test
+
         tile = call(tiles_test.TileTest.test_insert)
         self.assertNotIn('name', select_default_series_spec_options(tile.report_id, tile.series_specs())[0])
 

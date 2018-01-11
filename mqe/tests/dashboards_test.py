@@ -4,7 +4,6 @@ import uuid
 from mqe import dashboards
 from mqe.dashboards import OwnerDashboards, Dashboard
 from mqe.tests.tutil import call, report_data
-from mqe.tests import tiles_test
 from mqe.reports import Report
 from mqe import dataseries
 from mqe.tiles import Tile
@@ -192,6 +191,8 @@ class DashboardTest(unittest.TestCase):
 class DashboardsModuleTest(unittest.TestCase):
 
     def test_select_tile_ids(self):
+        from mqe.tests import tiles_test
+
         dashboard_id = uuid.uuid1()
         self.assertEqual([], dashboards._select_tile_ids(dashboard_id))
 

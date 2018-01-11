@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 from mqe import signals, reports, util, dataseries, tpcreator, layouts
 from mqe import dashboards
-from mqe.tests.sscreator_test import SSCSTest
 
 from mqe.tests.tutil import call, new_report_data
 from mqe.tiles import Tile
@@ -45,6 +44,8 @@ class SignalsTest(unittest.TestCase):
         self.assertEqual(['r1', 'r2'], [r.report_name for r in data])
 
     def test_layout_modification_by_sscs(self):
+        from mqe.tests import sscreator_test
+
         data = {}
         @signals.layout_modified.connect
         def on_tiles_replaced(c, **kwargs):
@@ -55,7 +56,7 @@ class SignalsTest(unittest.TestCase):
             data.clear()
             data.update(kwargs)
 
-        rd, tile = call(SSCSTest.test_sscs)
+        rd, tile = call(sscreator_test.SSCSTest.test_sscs)
         self.assertEqual(tile, data['layout_modification_result'].tile_replacement.values()[0])
         self.assertEqual(rd.layout().layout_id, data['layout_modification_result'].\
                          new_layout.layout_id)
