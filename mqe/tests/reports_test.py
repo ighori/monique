@@ -124,17 +124,16 @@ class ReportTest(unittest.TestCase):
     def _use_fetch_instances_iter(self, test_fun, chunk_size=None):
         try:
             old_method = Report.fetch_instances
-            old_chunk_size = reports.FETCH_INSTANCES_ITER_CHUNK_SIZE
 
-            Report.fetch_instances = lambda *args, **kwargs: \
-                list(Report.fetch_instances_iter(*args, **kwargs))
-            if chunk_size is not None:
-                reports.FETCH_INSTANCES_ITER_CHUNK_SIZE = chunk_size
+            def new_method(self, *args, **kwargs):
+                if chunk_size:
+                    kwargs['chunk_size'] = chunk_size
+                return list(Report.fetch_instances_iter(self, *args, **kwargs))
+            Report.fetch_instances = new_method
 
             test_fun()
         finally:
             Report.fetch_instances = old_method
-            reports.FETCH_INSTANCES_ITER_CHUNK_SIZE = chunk_size
 
     def test_fetch_instances_iter(self):
         self._use_fetch_instances_iter(self.test_fetch_instances)
@@ -557,20 +556,6 @@ class ReportTest(unittest.TestCase):
         r.delete_multiple_instances(['t1'], limit=2)
         all_ris = r.fetch_instances()
         self.assertEqual('-1 2 3 4 5 6 7'.split(), [ri['input_string'] for ri in all_ris])
-
-    def test_delete_multiple_instances_small_chunk(self):
-        old = reports.DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE
-        reports.DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE = 1
-        try:
-            self.test_delete_multiple_instances_delete_all()
-            self.test_delete_multiple_instance_use_limit()
-            self.test_delete_multiple_instances_delete_all_use_insertion_datetime()
-            self.test_delete_multiple_instances_delete_by_dts()
-            self.test_delete_multiple_instances_delete_by_ids()
-            self.test_delete_multiple_instances_delete_by_tag()
-            self.test_delete_multiple_instances_delete_by_tag_use_insertion_datetime()
-        finally:
-            reports.DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE = old
 
     def test_fetch_days(self):
         r, all_ris = self.create_multi_day_report()

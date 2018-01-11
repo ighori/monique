@@ -17,9 +17,6 @@ from mqe.signals import fire_signal, new_report
 log = logging.getLogger('mqe.reports')
 
 
-DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE = 2000
-FETCH_INSTANCES_ITER_CHUNK_SIZE = 2000
-
 
 
 class ReportInstance(Row):
@@ -306,7 +303,7 @@ class Report(Row):
                 columns=columns, order=order, limit=limit)
         return [ReportInstance(row) for row in rows]
 
-    def fetch_instances_iter(self, from_dt=None, to_dt=None, before=None, after=None, tags=None, columns=None,  order='asc', limit=100):
+    def fetch_instances_iter(self, from_dt=None, to_dt=None, before=None, after=None, tags=None, columns=None,  order='asc', limit=100, chunk_size=1000):
         """The same as :meth:`fetch_instances`, but returns an iterator yielding :class:`ReportInstance`
         objects instead of a complete list. The method might take longer time to fetch all results,
         because it retrieves data in chunks, but ensures memory usage will not increase by much (if the
@@ -324,7 +321,7 @@ class Report(Row):
             max_to_fetch = limit - num_fetched
             if max_to_fetch <= 0:
                 break
-            current_limit = min(max_to_fetch, FETCH_INSTANCES_ITER_CHUNK_SIZE)
+            current_limit = min(max_to_fetch, chunk_size)
             current_rows = c.dao.ReportInstanceDAO.select_multi(report_id=self.report_id, tags=tags,
                         min_report_instance_id=current_min_uuid,
                         max_report_instance_id=current_max_uuid,
@@ -393,7 +390,7 @@ class Report(Row):
 
     def delete_multiple_instances(self, tags=[], from_dt=None, to_dt=None,
                                   before=None, after=None, limit=1000, update_counters=True,
-                                  use_insertion_datetime=False):
+                                  use_insertion_datetime=False, chunk_size=1000):
         """Delete a range of report instances specified by the arguments described
         for the :meth:`fetch_instances` method.
 
@@ -403,6 +400,7 @@ class Report(Row):
             delete should have an insertion datetime contained in the time range
             specified by the parameters (as opposed to checking a creation datetime
             only, which can be customized). This flag is not supported for SQlite3.
+        :param int chunk_size: the number of instances to delete using a single database query
         :return: the number of deleted report instances"""
         from mqe import dataseries
 
@@ -414,7 +412,7 @@ class Report(Row):
             max_to_delete = limit - num_deleted
             if max_to_delete <= 0:
                 break
-            current_limit = min(max_to_delete, DELETE_MULTIPLE_INSTANCES_CHUNK_SIZE)
+            current_limit = min(max_to_delete, chunk_size)
             num, tags_subsets = c.dao.ReportInstanceDAO.delete_multi(self.owner_id,
                  self.report_id, tags, min_uuid, max_uuid, current_limit,
                  update_counters=update_counters,
