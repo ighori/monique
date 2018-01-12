@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
         name = 'monique',
-        version = '1.2',
+        version = '1.3',
         packages = find_packages(exclude=['mqe.tests',]),
         install_requires = [
             'monique-tables',
