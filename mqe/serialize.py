@@ -44,6 +44,7 @@ def _init_lib_classes():
     register_json_type(enrichment.EnrichedTable, 'ET')
 
     from mqe import dataseries
+    from mqe import aggregators
 
 def _type_name_to_class(type_name):
     _init_lib_classes()

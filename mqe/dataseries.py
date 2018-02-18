@@ -6,7 +6,7 @@ from collections import OrderedDict, namedtuple, defaultdict
 
 from mqetables import util as tabutil
 
-from mqe import c
+from mqe import c, aggregators
 from mqe import mqeconfig
 from mqe import serialize
 from mqe import util
@@ -301,6 +301,9 @@ class SeriesSpec(object):
 
         return self._colno_if_valid(self.params.get('filtering_colno'), report_instance, True)
 
+    def create_aggregator(self):
+        return aggregators.create_aggregator(self.params.get('aggregator_spec'))
+
     def copy(self, without_params=[]):
         res = SeriesSpec.__new__(SeriesSpec)
         res.params = copy.deepcopy(self.params)
@@ -571,69 +574,6 @@ class SeriesValue(Row):
     header = TextColumn('header')
 
 
-def insert_series_values(series_def, report, from_dt, to_dt, after=None, limit=None):
-    assert after or (from_dt is not None and to_dt is not None)
-
-    log.debug('insert_series_values report_id=%s sd.from_dt=%s sd.to_dt=%s from_dt=%s'
-              'to_dt=%s after=%s limit=%s', report.report_id, series_def.from_dt,
-              series_def.to_dt, from_dt, to_dt, after, limit)
-
-    instances_it = report.fetch_instances_iter(after=after,
-                                               from_dt=from_dt if not after else None,
-                                               to_dt=to_dt if not after else None,
-                                               limit=limit or mqeconfig.MAX_SERIES_POINTS,
-                                               tags=series_def.tags,
-                                               columns=['report_instance_id', 'ri_data'])
-    info = dict(oldest_rid_fetched=None,
-                newest_rid_fetched=None,
-                count=0)
-
-    def rows_it():
-        for ri in instances_it:
-            if info['oldest_rid_fetched'] is None:
-                info['oldest_rid_fetched'] = ri.report_instance_id
-            info['newest_rid_fetched'] = ri.report_instance_id
-            info['count'] += 1
-
-            cell = series_def.series_spec.get_cell(ri)
-            if cell:
-                row = dict(report_instance_id=ri.report_instance_id,
-                           json_value=serialize.mjson(cell.value))
-                header = ri.table.header(cell.colno)
-                if header:
-                    row['header'] = header
-                yield row
-
-    c.dao.SeriesValueDAO.insert_multi(series_def.series_id, rows_it())
-
-    if info['count'] == 0:
-        return
-
-    log.info('Inserted %d series values report_name=%r series_id=%s',
-             info['count'], report.report_name, series_def.series_id)
-
-
-    # from_rid stores minimal uuid from dt for which we fetched instances,
-    # while to_rid stores an actual latest report_instance_id in the series.
-    # However, generally it's not expected to_rid can always be a real report_instance_id
-    if from_dt is not None:
-        oldest_rid_stored = util.min_uuid_with_dt(from_dt)
-    else:
-        oldest_rid_stored = info['oldest_rid_fetched']
-
-    if series_def.from_rid is None or \
-            util.uuid_lt(oldest_rid_stored, series_def.from_rid):
-        log.debug('Updating series_def_id=%s from_rid_dt=%s', series_def.series_id,
-                  util.datetime_from_uuid1(oldest_rid_stored))
-        series_def.update_from_rid(oldest_rid_stored)
-
-    if series_def.to_rid is None or \
-            util.uuid_lt(series_def.to_rid, info['newest_rid_fetched']):
-        log.debug('Updating series_def_id=%s to_rid_dt=%s', series_def.series_id,
-                  util.datetime_from_uuid1(info['newest_rid_fetched']))
-        series_def.update_to_rid(info['newest_rid_fetched'])
-
-
 def get_series_values(series_def, report, from_dt, to_dt,
                       limit=mqeconfig.MAX_SERIES_POINTS_IN_TILE, latest_instance_id=None):
     """Retrieves a list of :class:`SeriesValue` objects for a given time range.
@@ -651,18 +591,24 @@ def get_series_values(series_def, report, from_dt, to_dt,
     :return: a list of :class:`SeriesValue` objects in the order of creation time of the corresponding report instances
     """
     assert from_dt is not None and to_dt is not None
+
+    aggregator = series_def.series_spec.create_aggregator()
+
     if series_def.from_dt is None or series_def.to_dt is None:
-        insert_series_values(series_def, report, from_dt, to_dt)
+        aggregator.insert_series_values(series_def, report, from_dt, to_dt)
     else:
         if from_dt < series_def.from_dt:
-            insert_series_values(series_def, report, from_dt, prev_dt(series_def.from_dt))
+            aggregator.insert_series_values(series_def, report,
+                                            from_dt, prev_dt(series_def.from_dt))
 
         if not latest_instance_id:
             latest_instance_id = report.fetch_latest_instance_id(series_def.tags)
         if latest_instance_id is not None \
                 and util.uuid_lt(series_def['to_rid'], latest_instance_id) \
                 and to_dt >= series_def.to_dt:
-            insert_series_values(series_def, report, None, None, after=series_def['to_rid'])
+            aggregator.insert_series_values(series_def, report,
+                                            None, None,
+                                            after=series_def['to_rid'])
 
 
     min_report_instance_id = util.uuid_for_prev_dt(util.uuid_with_dt(from_dt))
@@ -692,13 +638,15 @@ def get_series_values_after(series_def, report, after,
         will return consistent data (ie. coming from the same report instances).
     :return: a list of :class:`SeriesValue` objects in the order of creation time of the corresponding report instances
     """
+    aggregator = series_def.series_spec.create_aggregator()
+
     if series_def['from_rid'] is None or series_def['to_rid'] is None:
         insert_after = after
     elif util.uuid_lt(after, series_def['from_rid']):
         insert_after = after
     else:
         insert_after = series_def['to_rid']
-    insert_series_values(series_def, report, None, None, after=insert_after)
+    aggregator.insert_series_values(series_def, report, None, None, after=insert_after)
 
     if latest_instance_id:
         max_report_instance_id = util.uuid_for_next_dt(latest_instance_id)
