@@ -1,6 +1,9 @@
+from __future__ import division
+
 import logging
 
 from mqe import serialize, mqeconfig, util, c
+
 
 log = logging.getLogger('mqe.aggregators')
 
@@ -26,14 +29,16 @@ class Aggregator(object):
     def __init__(self, window_seconds):
         self.window_seconds = window_seconds
 
-    def insert_series_values(self, series_def, report, from_dt, to_dt, after=None, limit=None):
+    def insert_series_values(self, series_def, report, from_dt, to_dt, after=None, limit=None,
+                             latest_instance_id=None):
         raise NotImplementedError()
 
 
 class NopAggregator(Aggregator):
     agg_name = 'nop'
 
-    def insert_series_values(self, series_def, report, from_dt, to_dt, after=None, limit=None):
+    def insert_series_values(self, series_def, report, from_dt, to_dt, after=None, limit=None,
+                             latest_instance_id=None):
         assert after or (from_dt is not None and to_dt is not None)
 
         log.debug('insert_series_values report_id=%s sd.from_dt=%s sd.to_dt=%s from_dt=%s'
@@ -94,6 +99,19 @@ class NopAggregator(Aggregator):
             log.debug('Updating series_def_id=%s to_rid_dt=%s', series_def.series_id,
                       util.datetime_from_uuid1(info['newest_rid_fetched']))
             series_def.update_to_rid(info['newest_rid_fetched'])
+
+
+class WindowedAggregator(Aggregator):
+
+    def _window_start(self, dt):
+        ts = util.datetime_to_timestamp(dt)
+        window_start_ts = (ts // self.window_seconds) * self.window_seconds
+        return util.datetime_from_timestamp(window_start_ts)
+
+    def insert_series_values(self, series_def, report, from_dt, to_dt, after=None, limit=None,
+                             latest_instance_id=None):
+        series_def.to_rid
+
 
 
 AGGREGATOR_CLASSES = [NopAggregator]

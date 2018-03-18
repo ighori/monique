@@ -595,11 +595,13 @@ def get_series_values(series_def, report, from_dt, to_dt,
     aggregator = series_def.series_spec.create_aggregator()
 
     if series_def.from_dt is None or series_def.to_dt is None:
-        aggregator.insert_series_values(series_def, report, from_dt, to_dt)
+        aggregator.insert_series_values(series_def, report, from_dt, to_dt,
+                                        latest_instance_id=latest_instance_id)
     else:
         if from_dt < series_def.from_dt:
             aggregator.insert_series_values(series_def, report,
-                                            from_dt, prev_dt(series_def.from_dt))
+                                            from_dt, prev_dt(series_def.from_dt),
+                                            latest_instance_id=latest_instance_id)
 
         if not latest_instance_id:
             latest_instance_id = report.fetch_latest_instance_id(series_def.tags)
@@ -608,7 +610,8 @@ def get_series_values(series_def, report, from_dt, to_dt,
                 and to_dt >= series_def.to_dt:
             aggregator.insert_series_values(series_def, report,
                                             None, None,
-                                            after=series_def['to_rid'])
+                                            after=series_def['to_rid'],
+                                            latest_instance_id=latest_instance_id)
 
 
     min_report_instance_id = util.uuid_for_prev_dt(util.uuid_with_dt(from_dt))
@@ -646,7 +649,8 @@ def get_series_values_after(series_def, report, after,
         insert_after = after
     else:
         insert_after = series_def['to_rid']
-    aggregator.insert_series_values(series_def, report, None, None, after=insert_after)
+    aggregator.insert_series_values(series_def, report, None, None, after=insert_after,
+                                    latest_instance_id=latest_instance_id)
 
     if latest_instance_id:
         max_report_instance_id = util.uuid_for_next_dt(latest_instance_id)
