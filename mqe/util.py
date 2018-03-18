@@ -165,6 +165,15 @@ def safeget(ls, i):
         return None
     return ls[i]
 
+def all_but_last(seq):
+    info = dict(last=undefined)
+    def iter():
+        for el in seq:
+            if info['last'] is not undefined:
+                yield info['last']
+            info['last'] = el
+    return iter(), lambda: info['last']
+
 def powerset(lst):
     result = [[]]
     for x in lst:
