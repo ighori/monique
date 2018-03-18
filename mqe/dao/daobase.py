@@ -336,6 +336,11 @@ class SeriesValueDAO(BaseDAO):
         ``report_instance_id``."""
         raise NotImplementedError()
 
+    def select_latest_id(self, series_id):
+        """Select latest report_instance_id belonging to the given series,
+        ``None`` if no series_value rows exists for the given series_id."""
+        raise NotImplementedError()
+
 
 
 class OptionsDAO(BaseDAO):

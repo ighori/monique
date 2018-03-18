@@ -745,6 +745,13 @@ class CassSeriesValueDAO(SeriesValueDAO):
 
         return c.cass.execute(q.format(**fmt), params)
 
+    def select_latest_id(self, series_id):
+        c.cass.execute_fst("""SELECT report_instance_id
+                              FROM mqe.series_value
+                              WHERE series_id=?
+                              ORDER BY report_instance_id DESC
+                              LIMIT 1""")['report_instance_id']
+
 
 class CassOptionsDAO(OptionsDAO):
 

@@ -680,6 +680,16 @@ class Sqlite3SeriesValueDAO(SeriesValueDAO):
             cur.execute(q.format(**fmt), params)
             return cur.fetchall()
 
+    def select_latest_id(self, series_id):
+        with cursor() as cur:
+            cur.execute("""SELECT report_instance_id
+                           FROM series_value
+                           WHERE series_id=?
+                           ORDER BY report_instance_id DESC
+                           LIMIT 1""")
+            row = cur.fetchone()
+            return row['report_instance_id'] if row else None
+
 
 class Sqlite3OptionsDAO(OptionsDAO):
 
