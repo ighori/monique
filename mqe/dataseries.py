@@ -581,7 +581,8 @@ class SeriesValue(Row):
 
 
 def get_series_values(series_def, report, from_dt, to_dt,
-                      limit=mqeconfig.MAX_SERIES_POINTS_IN_TILE, latest_instance_id=None):
+                      limit=mqeconfig.MAX_SERIES_POINTS_IN_TILE,
+                      latest_instance_id=None):
     """Retrieves a list of :class:`SeriesValue` objects for a given time range.
     The function inserts new data series values if they haven't been already created
     for the requested time period.
@@ -599,18 +600,21 @@ def get_series_values(series_def, report, from_dt, to_dt,
     assert from_dt is not None and to_dt is not None
     materializer = series_def.series_spec.get_materializer()
     if series_def.from_dt is None or series_def.to_dt is None:
-        materializer.insert_series_values(series_def, report, from_dt, to_dt)
+        materializer.insert_series_values(series_def, report, from_dt, to_dt,
+                                          latest_instance_id=latest_instance_id)
     else:
         if from_dt < series_def.from_dt:
-            materializer.insert_series_values(series_def, report, from_dt, prev_dt(series_def.from_dt))
+            materializer.insert_series_values(series_def, report, from_dt,
+              prev_dt(series_def.from_dt), latest_instance_id=latest_instance_id)
 
         if not latest_instance_id:
             latest_instance_id = report.fetch_latest_instance_id(series_def.tags)
         if latest_instance_id is not None \
                 and util.uuid_lt(series_def['to_rid'], latest_instance_id) \
                 and to_dt >= series_def.to_dt:
-            materializer.insert_series_values(series_def, report, None, None, after=series_def['to_rid'])
-
+            materializer.insert_series_values(series_def, report, None, None,
+                                              after=series_def['to_rid'],
+                                              latest_instance_id=latest_instance_id)
 
     min_report_instance_id = util.uuid_for_prev_dt(util.uuid_with_dt(from_dt))
     max_report_instance_id = util.uuid_for_next_dt(util.uuid_with_dt(to_dt))
@@ -646,7 +650,9 @@ def get_series_values_after(series_def, report, after,
         insert_after = after
     else:
         insert_after = series_def['to_rid']
-    materializer.insert_series_values(series_def, report, None, None, after=insert_after)
+    materializer.insert_series_values(series_def, report, None, None,
+                                      after=insert_after,
+                                      latest_instance_id=latest_instance_id)
 
     if latest_instance_id:
         max_report_instance_id = util.uuid_for_next_dt(latest_instance_id)
