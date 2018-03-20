@@ -7,11 +7,13 @@
 
 
 #: Database type - one of 'sqlite3', 'cassandra'
-DATABASE_TYPE = 'sqlite3'
+DATABASE_TYPE = 'sqlalchemy'
 #DATABASE_TYPE = 'cassandra'
 
 #: Path to the Sqlite3 database file
 SQLITE3_DATABASE = '/var/lib/monique.db'
+
+SQLALCHEMY_ENGINE = 'postgresql+pg8000://postgres@/monique'
 
 #: Connection parameters to the Cassandra database, specified as keyword arguments to the
 #: :class:`cassandra.cluster.Cluster` class' ``__init__``.
@@ -88,6 +90,7 @@ MAX_TPCREATED = 200
 DAO_MODULES = [
     ('cassandra', 'mqe.dao.cassandradb.cassandradao'),
     ('sqlite3', 'mqe.dao.sqlite3db.sqlite3dao'),
+    ('sqlalchemy', 'mqe.dao.sqlalchemydao.sqlalchemydao'),
 ]
 
 

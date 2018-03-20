@@ -1,7 +1,14 @@
+import sys
 import uuid
 
-from sqlalchemy import Table, Column, BigInteger, Unicode, MetaData, Index, Date
+from sqlalchemy import Table, Column, BigInteger, Unicode, MetaData, Index, Date, create_engine
 from sqlalchemy import types
+from sqlalchemy.sql import select, and_, or_, insert
+
+from mqe.dao.daobase import *
+from mqe import c
+from mqe.dbutil import gen_uuid
+from mqe import mqeconfig
 
 
 class TimeUUID(types.TypeDecorator):
@@ -152,3 +159,115 @@ tile = Table(
     Column('tile_id', TimeUUID, primary_key=True),
     Column('tile_options', Unicode),
 )
+
+
+def init_engine():
+    if hasattr(c, 'sqlalchemy_engine'):
+        return
+    if not getattr(mqeconfig, 'SQLALCHEMY_ENGINE', None):
+        raise ValueError('No SQLALCHEMY_ENGINE defined in mqeconfig')
+    c.sqlalchemy_engine = create_engine(mqeconfig.SQLALCHEMY_ENGINE)
+
+def connection():
+    init_engine()
+    return c.sqlalchemy_engine.connect()
+
+
+class result(object):
+
+    def __init__(self, *args, **kwargs):
+        self.connection = connection()
+        self.result_proxy = self.connection.execute(*args, **kwargs)
+
+    def __enter__(self):
+        return self.result_proxy
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.result_proxy.close()
+        self.connection.close()
+
+
+def execute(*args, **kwargs):
+    conn = connection()
+    res = conn.execute(*args, **kwargs)
+    res.close()
+    conn.close()
+
+
+class SqlalchemyDashboardDAO(DashboardDAO):
+
+    def select(self, owner_id, dashboard_id):
+        q = select([dashboard]).\
+            where(and_(dashboard.c.owner_id==owner_id, dashboard.c.dashboard_id==dashboard_id))
+        with result(q) as res:
+            return res.fetchone()
+
+    def select_all(self, owner_id):
+        with cursor() as cur:
+            cur.execute("""SELECT * FROM dashboard WHERE owner_id=?""",
+                        [owner_id])
+            return cur.fetchall()
+
+
+    def insert(self, owner_id, dashboard_name, dashboard_options):
+        row = dict(owner_id=owner_id,
+                   dashboard_id=gen_uuid(),
+                   dashboard_name=dashboard_name,
+                   dashboard_options=dashboard_options)
+        q = dashboard.insert().values(**row)
+        execute(q)
+        return row
+
+
+    def update(self, owner_id, dashboard_id, dashboard_name, dashboard_options):
+        with cursor() as cur:
+            if dashboard_name is not None:
+                cur.execute("""UPDATE dashboard SET dashboard_name=?
+                               WHERE owner_id=? AND dashboard_id=?""",
+                            [dashboard_name, owner_id, dashboard_id])
+            if dashboard_options is not None:
+                cur.execute("""UPDATE dashboard SET dashboard_options=?
+                               WHERE owner_id=? AND dashboard_id=?""",
+                            [dashboard_options, owner_id, dashboard_id])
+
+    def delete(self, owner_id, dashboard_id):
+        with cursor() as cur:
+            cur.execute("""DELETE FROM dashboard WHERE owner_id=? AND dashboard_id=?""",
+                        [owner_id, dashboard_id])
+
+
+    def select_tile_ids(self, dashboard_id):
+        with cursor() as cur:
+            cur.execute("""SELECT tile_id FROM tile WHERE dashboard_id=?""", [dashboard_id])
+            return [r['tile_id'] for r in cur.fetchall()]
+
+
+    def select_all_dashboards_ordering(self, owner_id):
+        with cursor() as cur:
+            cur.execute("""SELECT dashboard_id_ordering
+                           FROM all_dashboards_properties
+                           WHERE owner_id=?""",
+                        [owner_id])
+            row = cur.fetchone()
+            if row:
+                return serialize.json_loads(row['dashboard_id_ordering'])
+            return None
+
+    def set_all_dashboards_ordering(self, owner_id, dashboard_id_list):
+        with cursor() as cur:
+            cur.execute(*replace('all_dashboards_properties', dict(owner_id=owner_id,
+                                                                   dashboard_id_ordering=serialize.mjson(dashboard_id_list))))
+
+
+def create_tables():
+    init_engine()
+    metadata.create_all(c.sqlalchemy_engine)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) >= 2:
+        command = sys.argv[1]
+        if command == 'create_tables':
+            create_tables()
+        else:
+            print 'Unknown command %r' % command
