@@ -3,7 +3,7 @@ import uuid
 
 from sqlalchemy import Table, Column, BigInteger, Unicode, MetaData, Index, UniqueConstraint, Date, create_engine
 from sqlalchemy import types
-from sqlalchemy.sql import select, and_, or_, insert, bindparam
+from sqlalchemy.sql import select, and_, or_, insert, bindparam, literal_column, text
 from sqlalchemy import exc
 
 from mqe.dao.daobase import *
@@ -191,10 +191,16 @@ class result(object):
 
 
 def execute(*args, **kwargs):
-    conn = connection()
-    res = conn.execute(*args, **kwargs)
-    res.close()
-    conn.close()
+    conn = None
+    res = None
+    try:
+        conn = connection()
+        res = conn.execute(*args, **kwargs)
+    finally:
+        if res is not None:
+            res.close()
+        if conn is not None:
+            conn.close()
 
 
 class SqlalchemyDashboardDAO(DashboardDAO):
@@ -338,7 +344,7 @@ class SqlalchemyLayoutDAO(LayoutDAO):
                 layout_by_report.c.tags==tags,
                 layout_by_report.c.dashboard_id==dashboard_id,
             ))
-            with result(update_q) as res:
+            with result(update_q, layout_id=layout_id) as res:
                 if res.rowcount == 0:
                     insert_q = layout_by_report.insert()
                     values = dict(
@@ -528,6 +534,221 @@ class SqlalchemyReportDAO(ReportDAO):
         )).limit(limit)
         with result(q) as res:
             return [r['tag'] for r in res.fetchall()]
+
+
+
+class Sqlite3ReportInstanceDAO(ReportInstanceDAO):
+
+    def _compute_ri_diskspace(self, row):
+        if not row['input_string']:
+            return 0
+        return len(row['input_string'])
+
+
+    def insert(self, owner_id, report_id, report_instance_id, tags, ri_data, input_string,
+               extra_ri_data, custom_created):
+        created = util.datetime_from_uuid1(report_instance_id)
+
+        tags_powerset = util.powerset(tags[:mqeconfig.MAX_TAGS])
+        all_rows = []
+        for tags_subset in tags_powerset:
+            all_rows.append(dict(report_id=report_id,
+                                 tags=tags_subset,
+                                 report_instance_id=report_instance_id,
+                                 ri_data=ri_data,
+                                 input_string=input_string,
+                                 all_tags=tags,
+                                 extra_ri_data=extra_ri_data))
+        q = report_instance.insert()
+        execute(q, all_rows)
+
+        q = report_instance_day.insert()
+        for tags_subset in tags_powerset:
+            try:
+                execute(q, report_id=report_id, tags=tags_subset, day=created.date())
+            except (exc.IntegrityError, exc.ProgrammingError):
+                pass
+
+        q = report.update().where(report.c.report_id==report_id)
+
+        execute(q.values(report_instance_count=(report.c.report_instance_count + 1)))
+
+        diskspace = self._compute_ri_diskspace(all_rows[0])
+        execute(q.values(report_instance_diskspace=(report.c.report_instance_diskspace + diskspace)))
+
+        # owner counts
+        q = report_data_for_owner.update().where(report_data_for_owner.c.owner_id==owner_id)
+
+        with result(q.values(report_instance_count=(report_data_for_owner.c.report_instance_count + 1))) as res:
+            if res.rowcount == 0:
+                try:
+                    execute(report_data_for_owner.insert(), owner_id=owner_id)
+                except (exc.IntegrityError, exc.ProgrammingError):
+                    execute(q.values(report_instance_count=(report_data_for_owner.c.report_instance_count + 1)))
+
+        execute(q.values(report_instance_diskspace=report_data_for_owner.c.report_instance_diskspace + diskspace))
+
+        # tags
+        q = report_tag.insert()
+        for tag in tags:
+            try:
+                execute(q, report_id=report_id, tag=tag)
+            except (exc.IntegrityError, exc.ProgrammingError):
+                pass
+
+        return all_rows[0]
+
+
+    def select_extra_ri_data(self, report_id, report_instance_id):
+        q = select([report_instance.c.extra_ri_data]).where(and_(
+            report_instance.c.report_id==report_id,
+            report_instance.c.tags==[],
+            report_instance.c.report_instance_id==report_instance_id,
+        ))
+        with result(q) as res:
+            row = res.fetchone()
+            return row['extra_ri_data'] if row else None
+
+
+    def select(self, report_id, report_instance_id, tags):
+        tags = tags or []
+        with cursor() as cur:
+            cur.execute("""SELECT * FROM report_instance
+                           WHERE report_id=? AND tags=? AND report_instance_id=?""",
+                        [report_id, tags, report_instance_id])
+            return postprocess_tags(cur.fetchone())
+
+
+    def select_multi(self, report_id, tags, min_report_instance_id, max_report_instance_id,
+                     columns, order, limit):
+        tags = tags or []
+        what = ', '.join(columns) if columns else '*'
+
+        with cursor() as cur:
+            cur.execute("""SELECT {what} FROM report_instance
+                           WHERE report_id=? AND tags=?
+                           AND report_instance_id > ? AND report_instance_id < ?
+                           ORDER BY report_instance_id {order} LIMIT ?""". \
+                        format(what=what, order=order),
+                        [report_id, tags, min_report_instance_id, max_report_instance_id,
+                         limit])
+            return map(postprocess_tags, cur.fetchall())
+
+
+    def select_latest_id(self, report_id, tags):
+        tags = tags or []
+        with cursor() as cur:
+            cur.execute("""SELECT report_instance_id FROM report_instance
+                           WHERE report_id=? AND tags=?
+                           ORDER BY report_instance_id DESC LIMIT 1""",
+                        [report_id, tags])
+            row = cur.fetchone()
+            return row['report_instance_id'] if row else None
+
+    def delete(self, owner_id, report_id, report_instance_id, update_counters):
+        ri = self.select(report_id, report_instance_id, [])
+        if not ri:
+            return 0, []
+        return self._delete_ris(owner_id, report_id, ri['all_tags'], [ri], update_counters)
+
+    def delete_multi(self, owner_id, report_id, tags, min_report_instance_id, max_report_instance_id,
+                     limit, update_counters, use_insertion_datetime):
+        if use_insertion_datetime:
+            raise NotImplementedError('Sqlite3ReportInstanceDAO doesn\'t support the use_insertion_datetime flag')
+        ris = self.select_multi(report_id, tags, min_report_instance_id, max_report_instance_id,
+                                ['report_instance_id', 'all_tags', 'input_string'], 'asc', limit)
+        log.info('Selected %d report instances for deletion', len(ris))
+        return self._delete_ris(owner_id, report_id, tags, ris, update_counters)
+
+    def _delete_ris(self, owner_id, report_id, tags, ris, update_counters):
+        qs = []
+        tags_days = set()
+        all_tags_subsets = set()
+
+        with cursor() as cur:
+            for ri in ris:
+                tags_powerset = util.powerset(ri['all_tags'])
+                cur.execute("""DELETE FROM report_instance WHERE report_id=?
+                               AND tags IN {in_p} AND report_instance_id=?""".format(in_p=in_params(tags_powerset)),
+                            [report_id] + tags_powerset + [ri['report_instance_id']])
+                day = util.datetime_from_uuid1(ri['report_instance_id']).date()
+                for tags_subset in tags_powerset:
+                    tags_days.add((tuple(tags_subset), day))
+                    all_tags_subsets.add(tuple(tags_subset))
+
+            if update_counters:
+                total_diskspace = sum(self._compute_ri_diskspace(ri) for ri in ris)
+                cur.execute("""UPDATE report
+                               SET report_instance_count = report_instance_count - ?
+                               WHERE report_id=?""",
+                            [len(ris), report_id])
+                cur.execute("""UPDATE report
+                               SET report_instance_diskspace = report_instance_diskspace - ?
+                               WHERE report_id=?""",
+                            [total_diskspace, report_id])
+                cur.execute("""UPDATE report_data_for_owner
+                               SET report_instance_count=report_instance_count - ?
+                               WHERE owner_id=?""",
+                            [len(ris), owner_id])
+                cur.execute("""UPDATE report_data_for_owner
+                               SET report_instance_diskspace=report_instance_diskspace - ?
+                               WHERE owner_id=?""",
+                            [total_diskspace, owner_id])
+
+
+            ### Delete days for which report instances no longer exist
+
+            for day_tags, day in tags_days:
+                cur.execute("""SELECT report_instance_id FROM report_instance
+                               WHERE report_id=? AND tags=? AND 
+                               report_instance_id > ? AND report_instance_id < ?
+                               LIMIT 1""",
+                            [report_id, list(day_tags),
+                             util.min_uuid_with_dt(datetime.datetime.combine(day,
+                                                                             datetime.datetime.min.time())),
+                             util.max_uuid_with_dt(datetime.datetime.combine(day,
+                                                                             datetime.datetime.max.time()))])
+                if not cur.fetchall():
+                    cur.execute("""DELETE FROM report_instance_day
+                                   WHERE report_id=? AND tags=? AND day=?""",
+                                [report_id, list(day_tags), day])
+
+
+            ### Delete tags for which report instances no longer exist
+
+            tags_present = set()
+            for tags, _ in tags_days:
+                for tag in tags:
+                    tags_present.add(tag)
+
+            for tag in tags_present:
+                cur.execute("""SELECT report_id FROM report_instance_day
+                               WHERE report_id=? AND tags=?
+                               LIMIT 1""",
+                            [report_id, [tag]])
+                if cur.fetchall():
+                    continue
+                cur.execute("""DELETE FROM report_tag
+                               WHERE report_id=? AND tag=?""",
+                            [report_id, tag])
+
+
+            return len(ris), [list(ts) for ts in all_tags_subsets]
+
+
+    def select_report_instance_count_for_owner(self, owner_id):
+        with cursor() as cur:
+            cur.execute("""SELECT report_instance_count FROM report_data_for_owner
+                           WHERE owner_id=?""", [owner_id])
+            row = cur.fetchone()
+            return row['report_instance_count'] if row else 0
+
+    def select_report_instance_diskspace_for_owner(self, owner_id):
+        with cursor() as cur:
+            cur.execute("""SELECT report_instance_diskspace FROM report_data_for_owner
+                           WHERE owner_id=?""", [owner_id])
+            row = cur.fetchone()
+            return row['report_instance_diskspace'] if row else 0
 
 
 
