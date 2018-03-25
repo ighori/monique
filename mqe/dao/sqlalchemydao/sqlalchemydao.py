@@ -3,11 +3,12 @@ import uuid
 
 from sqlalchemy import Table, Column, BigInteger, Unicode, MetaData, Index, Date, create_engine
 from sqlalchemy import types
-from sqlalchemy.sql import select, and_, or_, insert
+from sqlalchemy.sql import select, and_, or_, insert, bindparam
+from sqlalchemy import exc
 
 from mqe.dao.daobase import *
-from mqe import c
-from mqe.dbutil import gen_uuid
+from mqe import c, serialize
+from mqe.dbutil import gen_uuid, gen_timeuuid
 from mqe import mqeconfig
 
 
@@ -41,6 +42,7 @@ class StringList(types.TypeDecorator):
     impl = types.Unicode
 
     def process_bind_param(self, value, dialect):
+        value = value or []
         assert isinstance(value, list)
         return u','.join(value)
 
@@ -166,7 +168,7 @@ def init_engine():
         return
     if not getattr(mqeconfig, 'SQLALCHEMY_ENGINE', None):
         raise ValueError('No SQLALCHEMY_ENGINE defined in mqeconfig')
-    c.sqlalchemy_engine = create_engine(mqeconfig.SQLALCHEMY_ENGINE)
+    c.sqlalchemy_engine = create_engine(mqeconfig.SQLALCHEMY_ENGINE, echo=mqeconfig.DEBUG_QUERIES)
 
 def connection():
     init_engine()
@@ -196,17 +198,18 @@ def execute(*args, **kwargs):
 
 class SqlalchemyDashboardDAO(DashboardDAO):
 
+
     def select(self, owner_id, dashboard_id):
-        q = select([dashboard]).\
-            where(and_(dashboard.c.owner_id==owner_id, dashboard.c.dashboard_id==dashboard_id))
+        q = select([dashboard]).where(and_(dashboard.c.owner_id==owner_id,
+                                           dashboard.c.dashboard_id==dashboard_id))
         with result(q) as res:
             return res.fetchone()
 
+
     def select_all(self, owner_id):
-        with cursor() as cur:
-            cur.execute("""SELECT * FROM dashboard WHERE owner_id=?""",
-                        [owner_id])
-            return cur.fetchall()
+        q = select([dashboard]).where(dashboard.c.owner_id==owner_id)
+        with result(q) as res:
+            return res.fetchall()
 
 
     def insert(self, owner_id, dashboard_name, dashboard_options):
@@ -220,43 +223,193 @@ class SqlalchemyDashboardDAO(DashboardDAO):
 
 
     def update(self, owner_id, dashboard_id, dashboard_name, dashboard_options):
-        with cursor() as cur:
-            if dashboard_name is not None:
-                cur.execute("""UPDATE dashboard SET dashboard_name=?
-                               WHERE owner_id=? AND dashboard_id=?""",
-                            [dashboard_name, owner_id, dashboard_id])
-            if dashboard_options is not None:
-                cur.execute("""UPDATE dashboard SET dashboard_options=?
-                               WHERE owner_id=? AND dashboard_id=?""",
-                            [dashboard_options, owner_id, dashboard_id])
+        q = dashboard.update().where(and_(dashboard.c.owner_id==owner_id,
+                                          dashboard.c.dashboard_id==dashboard_id))
+        values = {}
+        if dashboard_name is not None:
+            values['dashboard_name'] = dashboard_name
+        if dashboard_options is not None:
+            values['dashboard_options'] = dashboard_options
+        execute(q.values(**values))
+
 
     def delete(self, owner_id, dashboard_id):
-        with cursor() as cur:
-            cur.execute("""DELETE FROM dashboard WHERE owner_id=? AND dashboard_id=?""",
-                        [owner_id, dashboard_id])
+        q = dashboard.delete().where(and_(dashboard.c.owner_id==owner_id,
+                                          dashboard.c.dashboard_id==dashboard_id))
+        execute(q)
 
 
     def select_tile_ids(self, dashboard_id):
-        with cursor() as cur:
-            cur.execute("""SELECT tile_id FROM tile WHERE dashboard_id=?""", [dashboard_id])
-            return [r['tile_id'] for r in cur.fetchall()]
+        q = select([tile.c.tile_id]).where(tile.c.dashboard_id==dashboard_id)
+        with result(q) as res:
+            return [r['tile_id'] for r in res.fetchall()]
 
 
     def select_all_dashboards_ordering(self, owner_id):
-        with cursor() as cur:
-            cur.execute("""SELECT dashboard_id_ordering
-                           FROM all_dashboards_properties
-                           WHERE owner_id=?""",
-                        [owner_id])
-            row = cur.fetchone()
+        q = select([all_dashboards_properties.c.dashboard_id_ordering]).\
+            where(all_dashboards_properties.c.owner_id==owner_id)
+        with result(q) as res:
+            row = res.fetchone()
             if row:
                 return serialize.json_loads(row['dashboard_id_ordering'])
             return None
 
     def set_all_dashboards_ordering(self, owner_id, dashboard_id_list):
-        with cursor() as cur:
-            cur.execute(*replace('all_dashboards_properties', dict(owner_id=owner_id,
-                                                                   dashboard_id_ordering=serialize.mjson(dashboard_id_list))))
+        q_update = all_dashboards_properties.update().where(
+            all_dashboards_properties.c.owner_id==owner_id)
+        values = {'dashboard_id_ordering': serialize.mjson(dashboard_id_list),
+                  'owner_id': owner_id}
+        with result(q_update.values(**values)) as res:
+            if res.rowcount == 0:
+                q_insert = all_dashboards_properties.insert()
+                execute(q_insert.values(**values))
+
+
+
+class SqlalchemyLayoutDAO(LayoutDAO):
+
+    def select(self, owner_id, dashboard_id,
+               columns=('layout_id', 'layout_def', 'layout_props')):
+        q = select([getattr(dashboard_layout.c, col) for col in columns]).\
+                where(and_(dashboard_layout.c.owner_id==owner_id,
+                           dashboard_layout.c.dashboard_id==dashboard_id))
+        with result(q) as res:
+            return res.fetchone()
+
+
+    def select_multi(self, owner_id, dashboard_id_list,
+                     columns=('layout_id', 'layout_def', 'layout_props')):
+        if 'dashboard_id' not in columns:
+            columns += 'dashboard_id',
+        q = select([getattr(dashboard_layout.c, col) for col in columns]).\
+                where(and_(dashboard_layout.c.owner_id==owner_id,
+                           dashboard_layout.c.dashboard_id.in_(dashboard_id_list)))
+        with result(q) as res:
+            return res.fetchall()
+
+    def set(self, owner_id, dashboard_id, old_layout_id, new_layout_id,
+            new_layout_def, new_layout_props):
+        if old_layout_id is None:
+            q = dashboard_layout.insert()
+            values = dict(
+                owner_id=owner_id,
+                dashboard_id=dashboard_id,
+                layout_def=new_layout_def,
+                layout_props=new_layout_props,
+                layout_id=new_layout_id,
+            )
+            try:
+                execute(q.values(**values))
+            except exc.IntegrityError:
+                return False
+            else:
+                return True
+
+        q = dashboard_layout.update().where(and_(
+            dashboard_layout.c.owner_id==owner_id,
+            dashboard_layout.c.dashboard_id==dashboard_id,
+            dashboard_layout.c.layout_id==old_layout_id
+        ))
+        values = dict(
+            layout_id=new_layout_id,
+            layout_def=new_layout_def,
+            layout_props=new_layout_props,
+        )
+        with result(q.values(**values)) as res:
+            return res.rowcount == 1
+
+
+    def delete(self, owner_id, dashboard_id):
+        q = dashboard_layout.delete().where(and_(
+            dashboard_layout.c.owner_id==owner_id,
+            dashboard_layout.c.dashboard_id==dashboard_id,
+        ))
+        execute(q)
+
+
+    def insert_layout_by_report_multi(self, owner_id, report_id_list, tags, label, dashboard_id,
+                                      layout_id):
+        for report_id in report_id_list:
+            update_q = layout_by_report.update().where(and_(
+                layout_by_report.c.owner_id==owner_id,
+                layout_by_report.c.report_id==report_id,
+                layout_by_report.c.label==label,
+                layout_by_report.c.tags==tags,
+                layout_by_report.c.dashboard_id==dashboard_id,
+            ))
+            with result(update_q) as res:
+                if res.rowcount == 0:
+                    insert_q = layout_by_report.insert()
+                    values = dict(
+                        owner_id=owner_id,
+                        report_id=report_id,
+                        tags=tags,
+                        label=label,
+                        dashboard_id=dashboard_id,
+                        layout_id=layout_id,
+                    )
+                    execute(insert_q.values(**values))
+
+
+    def delete_layout_by_report(self, owner_id, report_id, tags, label, dashboard_id,
+                                layout_id):
+        q = layout_by_report.delete().where(and_(
+            layout_by_report.c.owner_id==owner_id,
+            layout_by_report.c.report_id==report_id,
+            layout_by_report.c.tags==tags,
+            layout_by_report.c.label==label,
+            layout_by_report.c.dashboard_id==dashboard_id,
+            layout_by_report.c.layout_id==layout_id,
+        ))
+        execute(q)
+
+
+    def select_layout_by_report_multi(self, owner_id, report_id, tags, label, limit):
+        q = select([layout_by_report]).where(and_(
+            layout_by_report.c.owner_id==owner_id,
+            layout_by_report.c.report_id==report_id,
+            layout_by_report.c.tags==tags,
+            layout_by_report.c.label==label,
+        )).limit(limit)
+        with result(q) as res:
+            return res.fetchall()
+
+
+
+class SqlalchemyTileDAO(TileDAO):
+
+    def select_multi(self, dashboard_id, tile_id_list):
+        q = select([tile]).where(and_(
+            tile.c.dashboard_id==dashboard_id,
+            tile.c.tile_id.in_(tile_id_list),
+        ))
+        with result(q) as res:
+            return res.fetchall()
+
+
+    def insert_multi(self, owner_id, dashboard_id, tile_options_list):
+        if not tile_options_list:
+            return
+        q = tile.insert()
+        rows = []
+        for tile_options in tile_options_list:
+            row = dict(dashboard_id=dashboard_id,
+                       tile_id=gen_timeuuid(),
+                       tile_options=tile_options)
+            rows.append(row)
+        execute(q, rows)
+        return rows
+
+    def delete_multi(self, tile_list):
+        if not tile_list:
+            return
+        q = tile.delete().where(and_(
+            tile.c.dashboard_id==bindparam('dashboard_id'),
+            tile.c.tile_id==bindparam('tile_id'),
+        ))
+        params_list = [{'dashboard_id': t.dashboard_id,
+                        'tile_id': t.tile_id} for t in tile_list]
+        execute(q, params_list)
 
 
 def create_tables():
