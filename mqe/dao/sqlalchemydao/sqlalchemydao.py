@@ -1,13 +1,13 @@
 import sys
 import uuid
 
-from sqlalchemy import Table, Column, BigInteger, Unicode, MetaData, Index, Date, create_engine
+from sqlalchemy import Table, Column, BigInteger, Unicode, MetaData, Index, UniqueConstraint, Date, create_engine
 from sqlalchemy import types
 from sqlalchemy.sql import select, and_, or_, insert, bindparam
 from sqlalchemy import exc
 
 from mqe.dao.daobase import *
-from mqe import c, serialize
+from mqe import c, serialize, util
 from mqe.dbutil import gen_uuid, gen_timeuuid
 from mqe import mqeconfig
 
@@ -62,6 +62,7 @@ report = Table(
     Column('report_instance_count', BigInteger, default=0),
     Column('report_instance_diskspace', BigInteger, default=0),
 
+    UniqueConstraint('report_name', 'owner_id'),
     Index('idx__report__owner_id__report_name', 'owner_id', 'report_name'),
 )
 
@@ -410,6 +411,124 @@ class SqlalchemyTileDAO(TileDAO):
         params_list = [{'dashboard_id': t.dashboard_id,
                         'tile_id': t.tile_id} for t in tile_list]
         execute(q, params_list)
+
+
+
+class SqlalchemyReportDAO(ReportDAO):
+
+
+    def select(self, report_id):
+        q = select([report]).where(report.c.report_id==report_id)
+        with result(q) as res:
+            return res.fetchone()
+
+
+    def select_multi(self, owner_id, report_id_list):
+        q = select([report]).where(report.c.report_id.in_(report_id_list))
+        with result(q) as res:
+            return res.fetchall()
+
+    def select_or_insert(self, owner_id, report_name):
+        row = self.select_by_name(owner_id, report_name)
+        if row:
+            return False, row
+
+        q = report.insert()
+        values = dict(
+            report_id=gen_timeuuid(),
+            report_name=report_name,
+            owner_id=owner_id,
+        )
+        try:
+            execute(q.values(**values))
+            return True, values
+        except exc.IntegrityError:
+            return False, self.select_by_name(owner_id, report_name)
+
+
+    def select_by_name(self, owner_id, report_name):
+        q = select([report]).where(and_(
+            report.c.owner_id==owner_id,
+            report.c.report_name==report_name,
+        ))
+        with result(q) as res:
+            return res.fetchone()
+
+
+    def select_ids_by_name_prefix_multi(self, owner_id, name_prefix, after_name, limit):
+        if name_prefix is None:
+            name_prefix = ''
+        and_list = [
+            report.c.owner_id==owner_id,
+            report.c.report_name.like('%s%%' % name_prefix),
+        ]
+        if after_name is not None:
+            and_list.append(report.c.report_name > after_name)
+        q = select([report.c.report_id, report.c.report_name]).\
+            where(and_(*and_list)).\
+            order_by(report.c.report_name).\
+            limit(limit)
+        with result(q) as res:
+            return [row['report_id'] for row in res.fetchall()]
+
+
+    def insert(self, owner_id, report_name):
+        inserted, row = self.select_or_insert(owner_id, report_name)
+        if not inserted:
+            return None
+        return row
+
+
+    def delete(self, owner_id, report_id):
+        q = report.delete().where(report.c.report_id==report_id)
+        execute(q)
+        q = report_tag.delete.where(report_tag.c.report_id==report_id)
+        execute(q)
+
+
+    def select_report_instance_count(self, owner_id, report_id):
+        q = select([report.c.report_instance_count]).where(and_(
+            report.c.owner_id==owner_id,
+            report.c.report_id==report_id,
+        ))
+        with result(q) as res:
+            row = res.fetchone()
+            if not row:
+                return 0
+            return row['report_instance_count']
+
+
+    def select_report_instance_diskspace(self, owner_id, report_id):
+        q = select([report.c.report_instance_diskspace]).where(and_(
+            report.c.owner_id==owner_id,
+            report.c.report_id==report_id,
+            ))
+        with result(q) as res:
+            row = res.fetchone()
+            if not row:
+                return 0
+            return row['report_instance_diskspace']
+
+
+    def select_report_instance_days(self, report_id, tags):
+        q = select([report_instance_day.day]).where(and_(
+            report_instance_day.c.report_id==report_id,
+            report_instance_day.c.tags==tags,
+        ))
+        with result(q) as res:
+            dates = [row['day'] for row in res.fetchall()]
+            return [util.datetime_from_date(d) for d in dates]
+
+
+    def select_tags_sample(self, report_id, tag_prefix, limit, after_tag):
+        q = select([report_tag.c.tag]).where(and_(
+            report_tag.c.report_id==report_id,
+            report_tag.c.tag > after_tag,
+            report_tag.c.tag.like('%s%%' % tag_prefix),
+        )).limit(limit)
+        with result(q) as res:
+            return [r['tag'] for r in res.fetchall()]
+
 
 
 def create_tables():
