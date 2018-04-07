@@ -1,6 +1,7 @@
 import logging
 import re
 from collections import defaultdict
+import itertools
 
 from mqe import util
 from mqe.util import try_complete, NotCompleted
@@ -728,7 +729,7 @@ def pack_leftwards_mod():
     return do_pack_leftwards
 
 
-class TagsSortKey(object):
+class _DefaultTagsSortKey(object):
     re_number = re.compile(r'(\d+)')
 
     def __init__(self, tags):
@@ -767,10 +768,18 @@ class TagsSortKey(object):
                 return -1
         return 0
 
-DEFAULT_TAGS_SORT_KEY = TagsSortKey([])
+def sort_tpcreated_items(layout, items, put_master_first):
+    def key((tile_id, vo)):
+        props = layout.get_tile_props(tile_id)
+        if not props:
+            return _DefaultTagsSortKey([])
+        if props.get('is_master') and put_master_first:
+            return _DefaultTagsSortKey([])
+        return _DefaultTagsSortKey(props.get('tags', []))
+    return sorted(items, key=key)
 
 
-def repack_mod(put_master_first=True):
+def repack_mod(put_master_first=True, sort_tpcreated_items_fun=sort_tpcreated_items):
     """A mod compressing and re-sorting the layout. See :func:`repack`.
     """
 
@@ -781,29 +790,36 @@ def repack_mod(put_master_first=True):
         layout_dict_items = _sort_layout_items(layout_mod.layout.layout_dict, 'y')
         tile_id_to_index = {item[0]: i for i, item in enumerate(layout_dict_items)}
 
-        def key((tile_id, vo)):
-            """Returns (master_pos, tags_sort_key)"""
+        def get_group_index(tile_id):
+            """Returns an index of a group of tpcreated tiles to which the tile belongs
+            (or an index of the tile if it's not tpcreated).
+            """
             props = layout_mod.layout.get_tile_props(tile_id)
             master_id = None
             if props:
                 master_id = props.get('master_id')
-                if not master_id and not put_master_first and props.get('is_master'):
-                    master_id = tile_id
-
             if not master_id:
-                return (tile_id_to_index[tile_id], DEFAULT_TAGS_SORT_KEY)
+                return tile_id_to_index[tile_id]
             if master_id not in tile_id_to_index:
                 #log.warn('No master in layout_dict')
-                return (tile_id_to_index[tile_id], DEFAULT_TAGS_SORT_KEY)
-            return (tile_id_to_index[master_id], TagsSortKey(props.get('tags', [])))
+                return tile_id_to_index[tile_id]
+            return tile_id_to_index[master_id]
 
-        layout_dict_items.sort(key=key)
+        layout_dict_items.sort(key=lambda (tile_id, vo): get_group_index(tile_id))
+
+        ordered_layout_dict_items = []
+        for group_index, items_it in itertools.groupby(layout_dict_items,
+                                                       lambda (tile_id, vo): get_group_index(tile_id)):
+            items_list = list(items_it)
+            if len(items_list) > 1:
+                items_list = sort_tpcreated_items_fun(layout_mod.layout, items_list, put_master_first)
+            ordered_layout_dict_items.extend(items_list)
 
         res = {}
         start_x = 0
         start_y = 0
         vo_indexer = VisualOptionsIndexer()
-        for (tile_id, vo) in layout_dict_items:
+        for (tile_id, vo) in ordered_layout_dict_items:
             new_vo = vo.copy()
             new_vo.pop('x', None)
             new_vo.pop('y', None)
